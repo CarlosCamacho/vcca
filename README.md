@@ -30,6 +30,12 @@ VCCA needs the CoCo 3's own ROM, which is copyrighted and not included. On
 first start, pick **coco3.rom** (required) and **disk11.rom** (for floppies).
 If you use VCC on Windows, both are in its folder.
 
+## Reporting bugs
+
+Found something that doesn't work? [Open a bug report](https://github.com/CarlosCamacho/vcca/issues/new/choose).
+The form asks for your VCCA version, device and the steps to reproduce it.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for more.
+
 ## Features
 
 **Machine**

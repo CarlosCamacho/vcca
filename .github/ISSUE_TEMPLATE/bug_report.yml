@@ -1,0 +1,87 @@
+name: Bug report
+description: Something in VCCA doesn't work the way it should.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report this. The more of this form you fill in, the faster it can be fixed.
+
+        **Please don't attach ROMs or commercial disk images.** They're copyrighted and can't be shared here. Naming the program is enough.
+  - type: input
+    id: version
+    attributes:
+      label: VCCA version
+      description: In VCCA, ☰ → Help → About, at the bottom.
+      placeholder: 2.1.9-android10
+    validations:
+      required: true
+  - type: input
+    id: device
+    attributes:
+      label: Device and Android version
+      placeholder: Samsung Galaxy Tab S9, Android 14
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What went wrong, and what you expected to happen instead.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: From starting VCCA to the problem. Include what you typed, if anything.
+      placeholder: |
+        1. Run… BALLOON.DSK
+        2. Press FIRE at the title screen
+        3. The screen goes black
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Which part of VCCA?
+      multiple: true
+      options:
+        - Screen or display
+        - Sound
+        - Keyboard (on-screen or physical)
+        - Joystick or game controller
+        - Floppy disks
+        - Cassette tape
+        - Hard drives (IDE / HDB-DOS)
+        - Cartridges or Multi-Pak
+        - Save states, screenshots or video
+        - Printer (BitBanger)
+        - Menu, Help or settings
+        - Something else
+  - type: textarea
+    id: setup
+    attributes:
+      label: Setup
+      description: Anything you changed from the defaults. Leave out what you don't know.
+      placeholder: |
+        CPU: 6809, Memory: 512K, Monitor: RGB
+        Multi-Pak: slot 1 Game Master Cartridge, slot 4 FD-502
+        Disk controller ROM: Disk BASIC
+        Program: Balloon Fighter (from its disk)
+  - type: textarea
+    id: attachments
+    attributes:
+      label: Screenshots, video or a save state
+      description: |
+        Drag files here. A screenshot (📷) or short video (⏺) helps a lot.
+        A save state (☰ → File → Save states → Save state to file…) lets the exact moment be reproduced. GitHub won't take a .vccasnap file directly, so zip it first.
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before you submit
+      options:
+        - label: I searched the existing issues and this hasn't been reported.
+          required: true
+        - label: I'm not attaching ROMs or commercial software.
+          required: true
