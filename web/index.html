@@ -1,0 +1,582 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>VCCA</title>
+<style>
+  :root {
+    --bg: #111214;
+    --panel: #1c1e22;
+    --panel-2: #26292e;
+    --text: #e8e6e3;
+    --muted: #9a9ea6;
+    --accent: #e0662b;
+    --key: #2d4f7c;
+    --key-down: #e0662b;
+    --key-text: #f1efe9;
+    --key-edge: #13243b;
+    --ok: #4caf50;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    margin: 0; height: 100%; background: var(--bg); color: var(--text);
+    font: 15px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    overflow: hidden; user-select: none; -webkit-user-select: none; touch-action: none;
+  }
+  #app { display: flex; flex-direction: column; height: 100%; }
+  #top {
+    display: flex; align-items: center; gap: 8px; padding: 6px 10px;
+    background: var(--panel); border-bottom: 1px solid #000;
+  }
+  #top .title { font-weight: 700; letter-spacing: .5px; }
+  #status { flex: 1; color: var(--muted); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  button {
+    font: inherit; color: var(--text); background: var(--panel-2); border: 1px solid #000;
+    border-radius: 8px; padding: 7px 12px; touch-action: manipulation;
+  }
+  button:active { background: var(--accent); }
+  button.primary { background: var(--accent); color: #fff; }
+  #screenWrap { flex: 1 1 auto; min-height: 0; display: flex; align-items: center; justify-content: center; background: #000; position: relative; }
+  #screen { width: 100%; height: 100%; object-fit: contain; image-rendering: auto; display: block; }
+  /* Scan lines: a one-pixel-wide strip, one row per physical pixel, multiplied over the picture. */
+  #scan { position: absolute; display: none; pointer-events: none; mix-blend-mode: multiply; image-rendering: pixelated; }
+  #controls { flex: 0 0 auto; background: var(--panel); padding: 6px 6px calc(6px + env(safe-area-inset-bottom)); }
+  #controls.hidden { display: none; }
+  .tabs { display: flex; gap: 6px; padding: 0 6px 6px; }
+  .tabs button { padding: 4px 10px; font-size: 13px; }
+  .tabs button.on { background: var(--accent); color: #fff; }
+
+  /* CoCo 3 keyboard */
+  #kbd { display: flex; flex-direction: column; gap: 4px; }
+  .krow { display: flex; gap: 3px; justify-content: center; }
+  .k {
+    flex: 1 1 0; min-width: 0; height: 42px; border-radius: 6px; background: var(--key); color: var(--key-text);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    font-size: 15px; font-weight: 600; box-shadow: 0 2px 0 var(--key-edge); position: relative; overflow: hidden; white-space: nowrap;
+  }
+  .k small { font-size: 9px; font-weight: 500; color: var(--muted); line-height: 1; }
+  .k.wide { flex-grow: 1.6; font-size: 10px; }
+  .k.space { flex-grow: 5; }
+  .k.mod { font-size: 10px; letter-spacing: -.3px; }
+  .k.brk { font-size: 11px; }
+  .k.brk { background: #b3201c; }
+  .k.gap { visibility: hidden; flex-grow: .5; }
+  .k.down, .k.latched { background: var(--key-down); color: #fff; }
+  .k.down small, .k.latched small { color: #fff; }
+
+  /* joystick */
+  #joy { display: none; height: 190px; align-items: center; justify-content: space-around; }
+  #joy.on { display: flex; }
+  #stick { width: 170px; height: 170px; border-radius: 50%; background: radial-gradient(circle, #2f3238 0%, #1a1c20 70%); border: 2px solid #000; position: relative; touch-action: none; }
+  #knob { width: 64px; height: 64px; border-radius: 50%; background: var(--accent); position: absolute; left: 53px; top: 53px; box-shadow: 0 3px 6px #000a; pointer-events: none; }
+  .fire { width: 84px; height: 84px; border-radius: 50%; background: #b8322a; border: 2px solid #000; font-weight: 700; color: #fff; display: flex; align-items: center; justify-content: center; }
+  .fire.down { background: #ff5a4d; }
+  #fires { display: flex; flex-direction: column; gap: 12px; align-items: center; }
+  #joyside { font-size: 12px; color: var(--muted); }
+
+  /* menu */
+  #menu {
+    position: fixed; inset: 0; background: #000a; display: none; z-index: 10;
+  }
+  #menu.open { display: block; }
+  #menuPanel {
+    position: absolute; right: 0; top: 0; bottom: 0; width: min(380px, 92vw); background: var(--panel);
+    overflow-y: auto; padding: 12px 14px calc(20px + env(safe-area-inset-bottom)); touch-action: pan-y;
+    user-select: text;
+  }
+  .menuhead { position: sticky; top: -12px; z-index: 1; display: flex; align-items: center; gap: 8px; background: var(--panel); margin: -12px -14px 6px; padding: 12px 14px 10px; border-bottom: 1px solid #000; }
+  .menuhead b { flex: 1; font-size: 17px; }
+  h2.grp { font-size: 12px; text-transform: uppercase; letter-spacing: 1.2px; color: var(--muted); margin: 16px 4px 2px; }
+  details.sec { border-bottom: 1px solid #2c2f35; }
+  details.sec > summary { list-style: none; cursor: pointer; padding: 13px 4px; font-weight: 600; display: flex; align-items: center; }
+  details.sec > summary::-webkit-details-marker { display: none; }
+  details.sec > summary::after { content: "›"; margin-left: auto; color: var(--muted); font-size: 22px; line-height: 1; transition: transform .15s; }
+  details.sec[open] > summary::after { transform: rotate(90deg); }
+  details.sec[open] > summary { color: var(--accent); }
+  details.sec > :not(summary) { margin-left: 4px; margin-right: 4px; }
+  details.sec[open] { padding-bottom: 10px; }
+  .help { width: min(640px, 100%); height: 100%; padding-top: 12px; }
+  .help .menuhead { top: -18px; margin: -12px -18px 6px; padding: 12px 18px 10px; }
+  .help ul, .help ol { padding-left: 20px; margin: 6px 0; }
+  .help li { margin: 5px 0; }
+  .help p, .help li { font-size: 14px; }
+
+  .ports { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .ports fieldset { border: 1px solid #000; border-radius: 8px; background: var(--panel-2); margin: 0; padding: 6px 8px 8px; min-width: 0; }
+  .ports legend { font-size: 13px; font-weight: 600; padding: 0 4px; }
+  .ports label { display: flex; flex-direction: column; font-size: 12px; color: var(--muted); margin: 4px 0; }
+  .ports select { font: inherit; font-size: 13px; background: var(--panel); color: var(--text); border: 1px solid #000; border-radius: 6px; padding: 5px; margin-top: 2px; min-width: 0; }
+  /* tape deck */
+  .deck { background: linear-gradient(#34373d, #26282d); border: 1px solid #000; border-radius: 10px; padding: 10px; margin: 6px 0 10px; }
+  .deckwin { display: flex; align-items: center; gap: 10px; background: #0b0c0e; border: 1px solid #000; border-radius: 6px; padding: 8px 10px; margin-bottom: 10px; }
+  .reel { width: 26px; height: 26px; border-radius: 50%; border: 3px dotted #666; flex: none; }
+  .deck.moving .reel { animation: spin 1s linear infinite; border-color: var(--accent); }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .decklabel { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+  .decklabel #tapeName { font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .decklabel #tapePos { font-size: 11px; color: var(--muted); }
+  .tmode { font: 700 12px ui-monospace, monospace; color: #9f9; background: #000; border-radius: 4px; padding: 4px 6px; min-width: 42px; text-align: center; }
+  .counter { font: 700 18px ui-monospace, monospace; color: #ffcf6b; background: #000; border-radius: 4px; padding: 2px 6px; letter-spacing: 2px; }
+  .deckkeys { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; }
+  .deckkeys button { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 8px 0 6px; background: linear-gradient(#e9e6df, #c9c5bb); color: #222; border: 1px solid #000; border-radius: 4px; box-shadow: 0 4px 0 #6d6a63; font: 700 11px system-ui, sans-serif; letter-spacing: .5px; }
+  .deckkeys button i { font-style: normal; font-size: 15px; line-height: 1; }
+  .deckkeys button.reckey i { color: #c62828; }
+  .deckkeys button.on, .deckkeys button:active { transform: translateY(3px); box-shadow: 0 1px 0 #6d6a63; background: linear-gradient(#c9c5bb, #b6b2a8); }
+  #menu .deckkeys button.on { color: #222; }
+  .row { display: flex; align-items: center; gap: 8px; margin: 6px 0; flex-wrap: wrap; }
+  .row label { flex: 1; }
+  .row select { font: inherit; background: var(--panel-2); color: var(--text); border: 1px solid #000; border-radius: 8px; padding: 6px; }
+  .drive { display: flex; align-items: center; gap: 6px; margin: 6px 0; }
+  .drive .name { flex: 1; font-size: 13px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .drive b { width: 22px; }
+  .slot { display: flex; align-items: center; gap: 6px; margin: 6px 0; }
+  .slot b { width: 22px; }
+  .slot select { flex: 1; min-width: 0; font: inherit; background: var(--panel-2); color: var(--text); border: 1px solid #000; border-radius: 8px; padding: 6px; }
+  .slot .name { font-size: 12px; color: var(--muted); }
+  .romfor { font-size: 12px; color: var(--muted); margin: -2px 0 10px; }
+  .hdd { border: 1px solid #000; border-radius: 8px; padding: 8px; margin: 8px 0; background: var(--panel-2); }
+  .hdd .vlist { font-size: 12px; color: var(--muted); max-height: 7em; overflow-y: auto; margin: 4px 0; }
+  .rom { font-size: 13px; color: var(--muted); }
+  .rom.ok { color: var(--ok); }
+  .note { font-size: 12px; color: var(--muted); }
+  #menuPanel a, .help a { color: #f0905e; }
+
+  /* dialogs */
+  .dialog { position: fixed; inset: 0; background: #000c; display: none; align-items: center; justify-content: center; z-index: 20; padding: 16px; }
+  .dialog.open { display: flex; }
+  .dialog .box { background: var(--panel); border-radius: 12px; padding: 18px; width: min(520px, 100%); max-height: 100%; overflow-y: auto; user-select: text; touch-action: pan-y; }
+  .dialog h1 { font-size: 20px; margin: 0 0 8px; }
+  .dialog p { margin: 8px 0; }
+  .dialog textarea { width: 100%; height: 160px; background: #000; color: #9f9; font: 14px monospace; border-radius: 8px; border: 1px solid #333; padding: 8px; }
+  .dialog .buttons { display: flex; gap: 8px; justify-content: flex-end; margin-top: 12px; flex-wrap: wrap; }
+  #toast { position: fixed; left: 50%; bottom: 30%; transform: translateX(-50%); background: #000d; color: #fff; padding: 8px 14px; border-radius: 8px; display: none; z-index: 30; font-size: 14px; }
+
+
+  /* Commands tab */
+  #cmds { display: none; padding: 0 4px; }
+  #cmds.on { display: block; }
+  #menu button.on { background: var(--accent); color: #fff; }
+  .cmdrow { display: flex; gap: 6px; margin-bottom: 6px; }
+  .cmdrow button { flex: 1; padding: 8px 4px; font-size: 13px; }
+  #cmdGrid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; }
+  .cmd { background: var(--key); color: var(--key-text); border: 0; box-shadow: 0 2px 0 var(--key-edge); padding: 10px 2px; font: 600 13px ui-monospace, monospace; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+  .cmd.slotcmd { background: #3a3f47; font-weight: 500; }
+  #btnRec.rec { background: #c62828; color: #fff; }
+
+  /* joystick sides */
+  body.joy-swap #joy { flex-direction: row-reverse; }
+
+  /* landscape + joystick: stick | screen | fire buttons */
+  body.land-joy { --scrw: min(calc(100vh * 4 / 3), calc(100vw - 2 * 190px)); }
+  body.land-joy #app { display: grid; grid-template-columns: minmax(190px, 1fr) var(--scrw) minmax(190px, 1fr); grid-template-rows: minmax(0, 1fr) auto; grid-template-areas: "stick screen fire" "tabs screen fire"; }
+  body.land-joy #top { position: absolute; top: 0; left: 0; right: 0; background: transparent; border: 0; z-index: 2; pointer-events: none; justify-content: flex-end; }
+  body.land-joy #top > * { pointer-events: auto; }
+  body.land-joy #top .title, body.land-joy #status { display: none; }
+  body.land-joy.joy-swap #app { grid-template-areas: "fire screen stick" "fire screen tabs"; }
+  body.land-joy #controls, body.land-joy #joy { display: contents; }
+  body.land-joy .tabs { grid-area: tabs; padding: 8px; align-self: end; justify-content: center; flex-wrap: wrap; }
+  body.land-joy #stick { grid-area: stick; align-self: center; justify-self: center; }
+  body.land-joy #fires { grid-area: fire; align-self: center; justify-self: center; }
+  body.land-joy #screenWrap { grid-area: screen; height: 100vh; width: var(--scrw); }
+  @media (orientation: landscape) and (max-height: 600px) {
+    #app { flex-direction: row; }
+    #top { position: absolute; top: 0; left: 0; right: 0; background: transparent; border: 0; z-index: 2; pointer-events: none; }
+    #top > * { pointer-events: auto; }
+    #top .title, #status { display: none; }
+    #top { justify-content: flex-end; }
+    #controls { width: 46%; display: flex; flex-direction: column; justify-content: flex-end; }
+    .k { height: 36px; }
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="top">
+    <span class="title">VCCA</span>
+    <span id="status">Starting…</span>
+    <button id="btnShot" title="Screenshot (picture of the screen)">📷</button>
+    <button id="btnRec" title="Record video">⏺</button>
+    <button id="btnKbd" title="Show or hide the keyboard">⌨</button>
+    <button id="btnHelp" title="Help">?</button>
+    <button id="btnMenu" title="Menu">☰</button>
+  </div>
+  <div id="screenWrap"><canvas id="screen" width="640" height="480"></canvas><canvas id="scan" width="1" height="1"></canvas></div>
+  <div id="controls">
+    <div class="tabs">
+      <button id="tabKbd" class="on">Keyboard</button>
+      <button id="tabJoy">Joystick</button>
+      <button id="tabCmd">Commands</button>
+    </div>
+    <div id="kbd"></div>
+    <div id="cmds">
+      <div class="cmdrow">
+        <button id="cmdLoad">Load…</button><button id="cmdRun">Run…</button>
+        <button id="cmdSnap">Save state</button><button id="cmdRestore">Load state</button>
+      </div>
+      <div id="cmdGrid"></div>
+      <div class="note">Slots 10–16: tap to type, hold to change.</div>
+    </div>
+    <div id="joy">
+      <div id="stick"><div id="knob"></div></div>
+      <div id="fires">
+        <div class="fire" id="fire1">FIRE</div>
+        <div class="fire" id="fire2" style="width:60px;height:60px;font-size:12px">2</div>
+        <div id="joyside">Right port</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="menu">
+  <div id="menuPanel">
+    <div class="menuhead"><b>Menu</b><button id="btnMenuHelp">? Help</button><button id="btnClose" class="primary">Close</button></div>
+
+    <h2 class="grp">File</h2>
+    <details class="sec" data-sec="load" open><summary>Load and run</summary>
+      <div class="row">
+        <button id="btnLoad">Load…</button>
+        <button id="btnRun">Run…</button>
+      </div>
+      <p class="note">.bin, .dsk, .rom, .cas or .wav. Run also starts it.</p>
+      <div class="row">
+        <button id="btnHard">Hard reset</button>
+        <button id="btnSoft">Soft reset</button>
+        <button id="btnPause">Pause</button>
+      </div>
+    </details>
+    <details class="sec" data-sec="state"><summary>Save states</summary>
+      <p class="note">A save state is the whole running machine, frozen. Load it to go back to that exact moment.</p>
+      <div class="row">
+        <button id="btnSnap">Save state</button>
+        <button id="btnRestore">Load state</button>
+      </div>
+      <div class="row">
+        <button id="btnSnapSave">Save state to file…</button>
+        <button id="btnSnapLoad">Load state from file…</button>
+      </div>
+    </details>
+    <details class="sec" data-sec="capture"><summary>Screenshots and video</summary>
+      <p class="note">Pictures of the screen, saved to your device. The same buttons are at the top: 📷 and ⏺.</p>
+      <div class="row">
+        <button id="btnShotMenu">📷 Take screenshot</button>
+        <button id="btnRecMenu">⏺ Record video</button>
+      </div>
+    </details>
+    <h2 class="grp">Edit</h2>
+    <details class="sec" data-sec="text"><summary>Copy and paste text</summary>
+      <div class="row">
+        <button id="btnPaste">Type text into CoCo…</button>
+        <button id="btnCopy">Copy screen text</button>
+      </div>
+    </details>
+    <h2 class="grp">Configuration</h2>
+    <details class="sec" data-sec="machine"><summary>CPU and memory</summary>
+      <div class="row"><label for="selCpu">CPU</label>
+        <select id="selCpu"><option value="0">Motorola 6809</option><option value="1">Hitachi 6309</option></select></div>
+      <div class="row"><label for="selRam">Memory</label>
+        <select id="selRam"><option value="0">128K</option><option value="1">512K</option><option value="2">2048K</option><option value="3">8192K</option></select></div>
+      <div class="row"><label for="selSpeed">Speed</label>
+        <select id="selSpeed"><option value="1">Normal</option><option value="0">Fast as possible</option></select></div>
+      <div class="row"><label for="selOc">Double-speed overclock</label>
+        <select id="selOc"><option value="0">Off (1.79 MHz)</option><option value="4">3.58 MHz</option><option value="8">7.16 MHz</option></select></div>
+    </details>
+    <details class="sec" data-sec="display"><summary>Display</summary>
+      <div class="row"><label for="selMon">Monitor</label>
+        <select id="selMon"><option value="1">RGB</option><option value="0">Composite</option></select></div>
+      <div class="row"><label for="selScan">Scan lines</label>
+        <select id="selScan"><option value="0">Off</option><option value="1">Light</option><option value="2">Strong</option></select></div>
+      <div class="row"><label for="selPicture">Picture</label>
+        <select id="selPicture"><option value="full">Full (with border)</option><option value="title">Title (thin border)</option><option value="zoomed">Zoomed (no border)</option></select></div>
+    </details>
+    <details class="sec" data-sec="keyboard"><summary>Keyboard</summary>
+      <div class="row"><label for="selSticky">Sticky SHIFT/CTRL/ALT</label>
+        <select id="selSticky"><option value="1">On (tap, then key)</option><option value="0">Off (hold)</option></select></div>
+      <p class="note">A physical keyboard maps the PC way: Esc is BREAK, Home is CLEAR.</p>
+    </details>
+    <details class="sec" data-sec="joystick"><summary>Joystick</summary>
+      <div class="ports">
+        <fieldset><legend>Left joystick</legend>
+          <label>Input<select id="selJoyLeftSrc"></select></label>
+          <label>Emulation type<select id="selJoyLeftEmu"></select></label>
+        </fieldset>
+        <fieldset><legend>Right joystick</legend>
+          <label>Input<select id="selJoyRightSrc"></select></label>
+          <label>Emulation type<select id="selJoyRightEmu"></select></label>
+        </fieldset>
+      </div>
+      <p class="note">On-screen stick also takes a game controller. Keyboard: the arrow keys move, F1 and F2 fire. Touch on screen: your finger is the pen, and touching fires.</p>
+      <div class="row"><label for="selJoyCenter">On-screen stick</label>
+        <select id="selJoyCenter"><option value="1">Springs back to center</option><option value="0">Stays where released</option></select></div>
+      <div class="row"><label for="selJoySide">Landscape layout</label>
+        <select id="selJoySide"><option value="left">Stick left, buttons right</option><option value="right">Buttons left, stick right</option></select></div>
+    </details>
+    <details class="sec" data-sec="printer"><summary>BitBanger (printer)</summary>
+      <p class="note">Captures what the CoCo sends to a serial printer, such as <b>LLIST</b> or <b>PRINT#-2</b>.</p>
+      <div class="drive"><b>🖶</b><span class="name" id="prnStatus">No capture</span></div>
+      <div class="row">
+        <button id="prnStart">Start capture</button><button id="prnStop">Stop</button>
+      </div>
+      <div class="row">
+        <button id="prnShow">Show printout</button><button id="prnSave">Save printout…</button>
+      </div>
+      <label class="note"><input type="checkbox" id="chkPrnLF"> Add LF to CR</label>
+    </details>
+    <details class="sec" data-sec="tape"><summary>Tape</summary>
+      <div class="deck">
+        <div class="deckwin">
+          <span class="reel"></span>
+          <div class="decklabel"><span id="tapeName">no tape</span><span id="tapePos"></span></div>
+          <span class="tmode" id="tapeMode">—</span><span class="counter" id="tapeCounter">000</span>
+        </div>
+        <div class="deckkeys">
+          <button id="tapePlay"><i>▶</i>PLAY</button>
+          <button id="tapeRec" class="reckey"><i>●</i>REC</button>
+          <button id="tapeStop"><i>■</i>STOP</button>
+          <button id="tapeRew"><i>◀◀</i>REW</button>
+          <button id="tapeFwd"><i>▶▶</i>FWD</button>
+        </div>
+      </div>
+      <div class="row">
+        <button id="tapeInsert">Insert…</button><button id="tapeBlank">New blank tape</button>
+        <button id="tapeSave">Save tape…</button><button id="tapeEject">Eject</button>
+      </div>
+      <div class="row"><label for="selTapeFast">Tape loading</label>
+        <select id="selTapeFast"><option value="1">Fast</option><option value="0">Real time</option></select></div>
+    </details>
+    <h2 class="grp">Cartridge</h2>
+    <details class="sec" data-sec="carts"><summary>Multi-Pak</summary>
+      <div class="row"><label for="selMpi">Multi-Pak interface</label>
+        <select id="selMpi"><option value="1">Connected</option><option value="0">Not connected (slot 1 only)</option></select></div>
+      <div class="row"><label for="selSwitch">Multi-Pak switch</label>
+        <select id="selSwitch"><option value="0">Slot 1</option><option value="1">Slot 2</option><option value="2">Slot 3</option><option value="3">Slot 4</option></select></div>
+      <div id="slots"></div>
+      <p class="note">Changes take effect on the next hard reset.</p>
+    </details>
+    <details class="sec" data-sec="floppy"><summary>Floppy drives</summary>
+      <div id="drives"></div>
+      <div class="row"><button id="btnBlank">New blank disk…</button>
+        <label class="note"><input type="checkbox" id="chkTurbo"> Fast disk</label></div>
+    </details>
+    <details class="sec" data-sec="hdd"><summary>Hard drives (IDE)</summary>
+      <p class="note">Needs HDB-DOS and an IDE interface: see Help → Hard drives.</p>
+      <div id="hdds"></div>
+      <div class="row"><label for="selHddSize">New drive size</label>
+        <select id="selHddSize"><option value="16">16 floppies (5 MB)</option><option value="64" selected>64 floppies (21 MB)</option><option value="128">128 floppies (41 MB)</option><option value="255">255 floppies (82 MB)</option></select></div>
+    </details>
+    <details class="sec" data-sec="roms"><summary>System ROMs</summary>
+      <p class="note">Only coco3.rom is required. See Help → ROMs.</p>
+      <div class="row"><span class="rom" id="romCoco3">coco3.rom: missing</span><button id="btnRom">Load…</button></div>
+      <div class="romfor">Required. The CoCo 3's BASIC.</div>
+      <div class="row"><span class="rom" id="romDisk">disk11.rom: missing</span><button id="btnDiskRom">Load…</button></div>
+      <div class="romfor">For the FD-502 floppy drives (Disk BASIC).</div>
+      <div class="row"><span class="rom" id="romHdb">HDB-DOS ROM: missing</span><button id="btnHdbRom">Load…</button></div>
+      <div class="romfor">For IDE hard drives. Replaces Disk BASIC in the FD-502; floppies still work.</div>
+      <div class="row"><label for="selDiskRom">Disk controller ROM</label>
+        <select id="selDiskRom"><option value="disk11">Disk BASIC</option><option value="hdbdos">HDB-DOS</option></select></div>
+      <div class="row"><span class="rom" id="romOrch">orch90.rom: missing</span><button id="btnOrchRom">Load…</button></div>
+      <div class="romfor">Optional: the Orchestra-90's music program. Its DACs work without it.</div>
+      <div class="row"><span class="rom" id="romPic">pic-7040-510.bin: missing</span><button id="btnPicRom">Load…</button></div>
+      <div class="romfor">Speech/Sound Pak only: its processor's program.</div>
+      <div class="row"><span class="rom" id="romSpo">sp0256-al2.bin: missing</span><button id="btnSpoRom">Load…</button></div>
+      <div class="romfor">Speech/Sound Pak only: the speech chip's sounds.</div>
+      <div class="row"><span class="rom" id="romPsg">psg_firmware_v1.bin: missing</span><button id="btnPsgRom">Load…</button></div>
+      <div class="romfor">Optional: the CoCo PSG's menu. Its sound chip works without it.</div>
+    </details>
+    <h2 class="grp">Help</h2>
+    <details class="sec" data-sec="about"><summary>About</summary>
+      <p class="note"><b>VCCA</b>: <a href="https://github.com/VCCE/VCC">VCC</a> for Android, a Tandy Color Computer 3 emulator.<br>
+        Android port by <b>Carlos A. Camacho</b>.</p>
+      <p class="note"><b><a href="https://github.com/VCCE/VCC">VCC (Virtual Color Computer)</a></b>, copyright 2015 by Joseph Forgione. “Another classic computer canceled before it's time!”<br>
+        VCC repository and release packages maintained by Bill Pierce and Ed Jaquay. Adapted to Visual Studio by Gary Coulbourne and Wes Gale. Hitachi 6309 port by Walter Zambotti. Bug fixes and enhancements by Bill Pierce, James Ross, Peter Westberg, James Rye, EJ Jaquay, Mike Rojas, Trey Tomes and Craig Allsop.</p>
+      <p class="note">VCCA runs VCC's emulation: the 6809 and 6309 CPUs, GIME, PIAs, FD-502 (WD1793), cassette, BitBanger, Speech/Sound Pak, Game Master Cartridge, Orchestra-90, Multi-Pak and IDE drive logic.</p>
+      <p class="note"><b>MAME</b> cartridge drivers (BSD-3-Clause), ported: Stereo Composer, Symphony 12 and Speech/Sound Pak by tim lindner; CoCo PSG by Roberto Fernandez and Nigel Barnes (thanks to Ed Snider); Glenside IDE by Nigel Barnes; Orchestra-90 by Nathan Woods.</p>
+      <p class="note"><b>HDB-DOS</b> by Boisy G. Pitre and contributors (ToolShed project).</p>
+      <p class="note"><b>Keyboard special keys</b> (physical keyboard), as in VCC: F3 decrease overclock · F4 increase overclock · F5 soft reset (Shift+F5 hard reset) · F6 RGB/composite · F7 pause/run · F8 throttle · F9 hard reset · F11 full screen.</p>
+      <p class="note">VCC and VCCA are free software: you can redistribute them and/or modify them under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version. They are distributed in the hope that they will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details: <a href="https://www.gnu.org/licenses/">gnu.org/licenses</a>.</p>
+      <p class="note" id="aboutVersion"></p>
+    </details>
+  </div>
+</div>
+
+<div class="dialog" id="helpDlg">
+  <div class="box help">
+    <div class="menuhead"><b>Help</b><button id="helpClose" class="primary">Close</button></div>
+
+    <details class="sec" open><summary>Getting started</summary>
+      <p>VCCA emulates a Tandy Color Computer 3. It needs the CoCo 3's own ROM, which can't be included with the app.</p>
+      <ol>
+        <li>Copy <b>coco3.rom</b> (and <b>disk11.rom</b> for floppies) to your device.</li>
+        <li>☰ → Cartridge → System ROMs → Load… for each one.</li>
+        <li>The CoCo starts at the <b>OK</b> prompt.</li>
+      </ol>
+      <p>Everything you load (ROMs, disks, tapes, settings) stays on this device until you uninstall VCCA or clear its storage.</p>
+    </details>
+
+    <details class="sec"><summary>Loading programs</summary>
+      <p><b>Load…</b> and <b>Run…</b> work like XRoar's. Pick a file:</p>
+      <ul>
+        <li><b>.bin</b>: goes straight into memory. Load: type <b>EXEC</b> to start it. Run: starts it.</li>
+        <li><b>.dsk</b>: goes into drive 0. Run types <b>RUN"…"</b> or <b>LOADM"…":EXEC</b> for the program on it.</li>
+        <li><b>.cas</b> / <b>.wav</b>: goes into the tape deck and plays. Run types <b>CLOAD</b> (then RUN) or <b>CLOADM:EXEC</b>.</li>
+        <li><b>.rom</b> / <b>.ccc</b>: a program pak in slot 1. The Multi-Pak switch moves to slot 1; set it back to slot 4 for Disk BASIC.</li>
+      </ul>
+    </details>
+
+    <details class="sec"><summary>Save states, screenshots and video</summary>
+      <p>Three different things:</p>
+      <ul>
+        <li><b>Save state</b> (Commands tab or ☰ → File → Save states) freezes the whole running machine: memory, CPU, cartridges. <b>Load state</b> puts you back at that exact moment, mid-game if you like. Disks and tapes are not part of it, so loading a state never undoes what you saved to disk. A state only loads in the same VCCA version that saved it.</li>
+        <li><b>📷 Screenshot</b> saves a picture of the screen as a PNG.</li>
+        <li><b>⏺ Video</b> records the screen with sound until you tap ⏺ again (up to 3 minutes), as MP4 where the device supports it.</li>
+      </ul>
+    </details>
+
+    <details class="sec"><summary>Keyboard</summary>
+      <ul>
+        <li>The on-screen keyboard is laid out like a CoCo 3's, as in XRoar.</li>
+        <li><b>SHIFT</b>, <b>CTRL</b> and <b>ALT</b> are sticky by default: tap one, then the key. Change it in ☰ → Configuration → Keyboard.</li>
+        <li>A physical keyboard maps the PC way: Esc is <b>BREAK</b>, Home is <b>CLEAR</b>.</li>
+        <li>VCC's special keys work on a physical keyboard: F3/F4 overclock down/up, F5 soft reset (Shift+F5 hard reset), F6 RGB/composite, F7 pause, F8 throttle, F9 hard reset, F11 full screen.</li>
+        <li>☰ → Edit → <b>Type text into CoCo</b> types a whole BASIC listing for you.</li>
+      </ul>
+    </details>
+
+    <details class="sec"><summary>Joystick</summary>
+      <ul>
+        <li>☰ → Configuration → Joystick sets each port, as in VCC: its <b>input</b> (on-screen stick or game controller, touch on screen, keyboard, or none) and its <b>emulation type</b> (Standard, Tandy Hi-Res Interface or CoCo Max). By default the on-screen stick is the right joystick.</li>
+        <li>In landscape the stick, screen and fire buttons sit side by side. ☰ → Configuration → Joystick → <b>Joystick layout</b> swaps the sides.</li>
+        <li><b>Springs back to center</b> acts like a self-centering stick; <b>Stays where released</b> like a Tandy deluxe stick with centering off.</li>
+        <li>A Bluetooth or USB game controller also works.</li>
+        <li>For drawing programs, set the port's input to <b>Touch on screen</b> and its emulation type to the program's interface: your finger becomes the pen at full resolution.</li>
+        <li><b>Keyboard</b> input uses the arrow keys and F1/F2 on a physical keyboard; those keys then stop reaching the CoCo.</li>
+      </ul>
+    </details>
+
+    <details class="sec"><summary>Commands tab</summary>
+      <ul>
+        <li>The blue buttons type common BASIC commands. Ones that end in a quote or space wait for you to finish typing.</li>
+        <li><b>Slots 10–16</b> are yours: tap an empty slot to set it, hold a slot for a second to change it. Use <b>|</b> for ENTER, for example <b>LOADM"GAME":EXEC|</b>.</li>
+      </ul>
+    </details>
+
+    <details class="sec"><summary>Floppy disks</summary>
+      <ul>
+        <li>Needs <b>disk11.rom</b> and the FD-502 controller, which is in Multi-Pak slot 4 by default.</li>
+        <li>☰ → Cartridge → Floppy drives: Insert a .dsk, or make a New blank disk (it is formatted for you).</li>
+        <li>What the CoCo writes is kept. <b>Save</b> copies the disk image to your device.</li>
+        <li><b>Fast disk</b> skips the drive's real timing.</li>
+      </ul>
+    </details>
+
+    <details class="sec"><summary>Cassette tapes</summary>
+      <ul>
+        <li>The deck has <b>PLAY</b>, <b>REC</b>, <b>STOP</b>, <b>REW</b> (back to the start) and <b>FWD</b> (to the next program on the tape).</li>
+        <li><b>Loading:</b> Insert a .cas or .wav, press PLAY, type <b>CLOAD</b> (BASIC) or <b>CLOADM</b> (machine code). Run… does all of that for you.</li>
+        <li><b>Saving:</b> press REC (a blank tape goes in if the deck is empty), then type <b>CSAVE"NAME"</b> or <b>CSAVEM"NAME",start,end,exec</b>. <b>Save tape…</b> copies the tape to your device.</li>
+        <li><b>Fast</b> loading runs at full speed while the motor is on. Choose <b>Real time</b> to hear the tape.</li>
+      </ul>
+    </details>
+
+    <details class="sec"><summary>Hard drives (IDE)</summary>
+      <p>A hard drive holds many floppies' worth of programs, numbered 0, 1, 2…, so you can switch between them without inserting anything.</p>
+      <ol>
+        <li>☰ → Cartridge → System ROMs: load an <b>HDB-DOS</b> ROM built for the IDE interface (LBA). Set <b>Disk controller ROM</b> to HDB-DOS.</li>
+        <li>☰ → Cartridge → Multi-Pak: put <b>IDE hard drive interface ($FF70)</b> in a free slot (1–3). Keep the FD-502 in slot 4 and the switch on slot 4.</li>
+        <li>☰ → Cartridge → Hard drives: <b>Create</b> a master drive, or import an image.</li>
+        <li>Hard reset.</li>
+      </ol>
+      <p>In BASIC: <b>DRIVE 5</b> then <b>DIR</b> lists virtual floppy 5; <b>LOADM</b>, <b>RUN"…"</b> and <b>SAVE</b> use it. <b>DRIVE #1</b> switches to the slave drive; <b>DRIVE OFF</b> brings back the real floppy drives.</p>
+      <p>To fill virtual floppies, use <b>Add .dsk files…</b> on the drive, or SAVE to them from BASIC.</p>
+    </details>
+
+    <details class="sec"><summary>Printer (BitBanger)</summary>
+      <ul>
+        <li>☰ → Configuration → BitBanger: <b>Start capture</b>, then print from the CoCo, for example <b>LLIST</b> or <b>PRINT#-2,"HELLO"</b>.</li>
+        <li><b>Show printout</b> displays it; <b>Save printout…</b> saves it as a text file.</li>
+        <li><b>Add LF to CR</b> starts a new line after each carriage return, which most text viewers need.</li>
+      </ul>
+    </details>
+
+    <details class="sec"><summary>Cartridges and sound</summary>
+      <ul>
+        <li>The Multi-Pak has four slots. The <b>switch</b> chooses which slot's ROM the CoCo starts from; games choose a sound cartridge's slot themselves.</li>
+        <li>A game's “GMC slot 2” means Multi-Pak slot 2 here.</li>
+        <li>A sound cartridge must be in the Multi-Pak for a game to be heard through it. Selecting the Orchestra-90 or a GMC slot with nothing there is silent, as on a real CoCo.</li>
+        <li>For disk games with GMC sound, use “Game Master Cartridge, sound only (disk games)”. A GMC game on cartridge needs its ROM.</li>
+        <li>The Stereo Composer and the IDE interface at $FF70 share addresses; use one or the other.</li>
+        <li>Cartridge changes take effect on the next hard reset.</li>
+      </ul>
+    </details>
+
+    <details class="sec"><summary>Display</summary>
+      <ul>
+        <li><b>Picture</b>: Full shows the whole border, Title a thin one, Zoomed none.</li>
+        <li><b>Scan lines</b> darken the gaps between the CoCo's lines, drawn at your screen's own resolution so they stay even.</li>
+        <li><b>Monitor</b>: RGB as on a CM-8 monitor, or Composite as on a TV.</li>
+      </ul>
+    </details>
+
+    <details class="sec"><summary>ROMs</summary>
+      <ul>
+        <li><b>coco3.rom</b> (required): the CoCo 3's BASIC. A 32,770-byte copy with a 2-byte header is fine.</li>
+        <li><b>disk11.rom</b>: Disk Extended Color BASIC, for floppies.</li>
+        <li><b>HDB-DOS</b>: for IDE hard drives.</li>
+        <li>Speech/Sound Pak: <b>pic-7040-510.bin</b> and <b>sp0256-al2.bin</b>.</li>
+        <li>Optional: <b>orch90.rom</b> (Orchestra-90 music program), <b>psg_firmware_v1.bin</b> (CoCo PSG menu).</li>
+      </ul>
+      <p>If you use VCC on Windows, these are in its folder. They are copyrighted, so VCCA can't include them.</p>
+    </details>
+
+    <details class="sec"><summary>Troubleshooting</summary>
+      <ul>
+        <li><b>Black screen, nothing happens:</b> load coco3.rom.</li>
+        <li><b>No DISK in the startup message:</b> load disk11.rom and keep the FD-502 in slot 4 with the switch on slot 4.</li>
+        <li><b>A game's sound option is silent:</b> put that cartridge in the Multi-Pak, then hard reset.</li>
+        <li><b>A save state won't load:</b> it came from a different VCCA version.</li>
+        <li><b>A tape won't load:</b> try Real time; a .wav made by converting a .cas may lack the silent gaps BASIC needs between blocks.</li>
+      </ul>
+    </details>
+  </div>
+</div>
+
+<div class="dialog" id="welcome">
+  <div class="box">
+    <h1>Welcome to VCCA</h1>
+    <p>VCCA emulates a Tandy Color Computer 3. It needs the CoCo 3's own ROM, which can't be included with the app.</p>
+    <p><b>coco3.rom</b> (32K, required): the CoCo 3 BASIC ROM. If you use VCC on Windows, it's in the VCC folder.</p>
+    <p><b>disk11.rom</b> (optional): Disk Extended BASIC 1.1, for the FD-502 floppy drives.</p>
+    <p class="note">Copy them to this phone (Downloads works), then pick them here.</p>
+    <div class="buttons">
+      <button id="wDisk">Pick disk11.rom</button>
+      <button id="wRom" class="primary">Pick coco3.rom</button>
+    </div>
+    <p class="rom" id="wStatus"></p>
+  </div>
+</div>
+
+<div class="dialog" id="pasteDlg">
+  <div class="box">
+    <h1>Type text into the CoCo</h1>
+    <p class="note">VCCA types this as keystrokes, so it works for BASIC listings. Lines end with ENTER.</p>
+    <textarea id="pasteText" spellcheck="false" autocapitalize="characters"></textarea>
+    <div class="buttons">
+      <button id="pasteCancel">Cancel</button>
+      <button id="pasteGo" class="primary">Type it</button>
+    </div>
+  </div>
+</div>
+
+<div class="dialog" id="textDlg">
+  <div class="box">
+    <h1>Screen text</h1>
+    <textarea id="screenText" spellcheck="false" readonly></textarea>
+    <div class="buttons"><button id="textClose" class="primary">Close</button></div>
+  </div>
+</div>
+
+<input type="file" id="filePick" style="display:none">
+<div id="toast"></div>
+<script src="app.js"></script>
+</body>
+</html>

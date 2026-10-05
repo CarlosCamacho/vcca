@@ -1,0 +1,18 @@
+# Build output
+obj/
+out/
+android/build/
+android/assets/
+web/vcc.wasm
+
+# Signing keys: never commit
+*.keystore
+*.jks
+
+# Copyrighted ROMs and disk images used for testing
+roms/
+*.rom
+!test/ff16k.rom
+*.ccc
+
+node_modules
