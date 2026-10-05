@@ -141,6 +141,7 @@
   .rom.ok { color: var(--ok); }
   .note { font-size: 12px; color: var(--muted); }
   #menuPanel a, .help a { color: #f0905e; }
+  a.btnlink { color: var(--text); background: var(--panel-2); border: 1px solid #000; border-radius: 8px; padding: 7px 12px; text-decoration: none; white-space: nowrap; }
 
   /* dialogs */
   .dialog { position: fixed; inset: 0; background: #000c; display: none; align-items: center; justify-content: center; z-index: 20; padding: 16px; }
@@ -394,14 +395,14 @@
       <p class="note"><b>HDB-DOS</b> by Boisy G. Pitre and contributors (ToolShed project).</p>
       <p class="note"><b>Keyboard special keys</b> (physical keyboard), as in VCC: F3 decrease overclock · F4 increase overclock · F5 soft reset (Shift+F5 hard reset) · F6 RGB/composite · F7 pause/run · F8 throttle · F9 hard reset · F11 full screen.</p>
       <p class="note">VCC and VCCA are free software: you can redistribute them and/or modify them under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version. They are distributed in the hope that they will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details: <a href="https://www.gnu.org/licenses/">gnu.org/licenses</a>.</p>
-      <p class="note" id="aboutVersion"></p>
+      <p class="note"><span id="aboutVersion"></span> · <a class="bugLink" href="https://github.com/CarlosCamacho/vcca/issues/new/choose">Report a bug</a> · <a href="https://github.com/CarlosCamacho/vcca">VCCA on GitHub</a></p>
     </details>
   </div>
 </div>
 
 <div class="dialog" id="helpDlg">
   <div class="box help">
-    <div class="menuhead"><b>Help</b><button id="helpClose" class="primary">Close</button></div>
+    <div class="menuhead"><b>Help</b><a class="bugLink btnlink" href="https://github.com/CarlosCamacho/vcca/issues/new/choose">🐞 Report a bug</a><button id="helpClose" class="primary">Close</button></div>
 
     <details class="sec" open><summary>Getting started</summary>
       <p>VCCA emulates a Tandy Color Computer 3. It needs the CoCo 3's own ROM, which can't be included with the app.</p>
@@ -529,6 +530,7 @@
     </details>
 
     <details class="sec"><summary>Troubleshooting</summary>
+      <p>Still stuck? <a class="bugLink" href="https://github.com/CarlosCamacho/vcca/issues/new/choose">Report a bug</a>: it opens a form on GitHub with your VCCA version and device already filled in.</p>
       <ul>
         <li><b>Black screen, nothing happens:</b> load coco3.rom.</li>
         <li><b>No DISK in the startup message:</b> load disk11.rom and keep the FD-502 in slot 4 with the switch on slot 4.</li>

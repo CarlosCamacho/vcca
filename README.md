@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="docs/vcca-logo.png" width="240" alt="VCCA logo: a TRS-80 Deluxe Joystick over red, green and blue stripes">
+</p>
+
 # VCCA — VCC for Android
 
 **VCCA** is a Tandy Color Computer 3 emulator for Android phones and tablets.
@@ -69,7 +73,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for more.
 - BitBanger printer capture (`LLIST`, `PRINT#-2`) to text
 - Type a whole BASIC listing in, or copy the screen's text out
 - ROMs, disks, tapes and settings stay on the device between runs
-- Built-in Help covers every feature, including step-by-step hard drive setup
+- Built-in Help covers every feature, including step-by-step hard drive setup, and **Report a bug** opens the bug form with your version and device filled in
 
 ## How it works
 
@@ -87,7 +91,8 @@ port/      host.cpp   reset sequence, frame and audio hand-off, exported calls
            tape.cpp   VCC's Cassette.cpp, reading the front end's tape file
            vfs.cpp    Win32 file calls answered by the front end
 web/       the front end: screen, keyboard, joystick, audio, menus, help
-android/   manifest, activity, icon and the APK build script
+android/   manifest, activity, icons and the APK build script
+           (icon.sh makes the icons from assets/icon/vcca-icon.png)
 test/      6809 test ROMs and Node/Playwright test harnesses
 ```
 
