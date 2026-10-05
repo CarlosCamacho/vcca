@@ -47,7 +47,7 @@ const Store = {
   },
 };
 
-const VERSION = '2.1.9-android10';
+const VERSION = '2.1.9-android11';
 const defaults = {
   cpu: 0, ram: 1, rgb: 1, scan: 0, throttle: 1, overclock: 0, touchJoy: 0, turboDisk: 0,
   drives: [null, null, null, null],   // {key, name}
@@ -540,6 +540,19 @@ function wireAccordions() {
       });
     }
   }
+}
+
+// The bug report form on GitHub, with the version and device filled in.
+// Issue forms take a field's value from a query parameter named by its id.
+const BUG_FORM = 'https://github.com/CarlosCamacho/vcca/issues/new?template=bug_report.yml';
+function bugReportUrl() {
+  const m = navigator.userAgent.match(/Android ([^;)]+);\s*([^;)]+)/);
+  let device = '';
+  if (m) {
+    const model = m[2].replace(/\s*Build\/.*$/, '').trim();
+    device = (model && model !== 'K' && model !== 'wv' ? model + ', ' : '') + 'Android ' + m[1].trim();
+  }
+  return `${BUG_FORM}&version=${encodeURIComponent(VERSION)}` + (device ? `&device=${encodeURIComponent(device)}` : '');
 }
 
 function openHelp() { $('helpDlg').classList.add('open'); }
@@ -1133,6 +1146,7 @@ function wireUi() {
   wireAccordions();
   new ResizeObserver(() => applyScanlines()).observe($('screenWrap'));
   $('aboutVersion').textContent = 'Version ' + VERSION;
+  for (const el of document.querySelectorAll('a.bugLink')) el.href = bugReportUrl();
   if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
   $('btnKbd').onclick = () => {
     settings.showControls = !settings.showControls;
