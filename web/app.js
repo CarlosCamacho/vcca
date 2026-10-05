@@ -47,7 +47,7 @@ const Store = {
   },
 };
 
-const VERSION = '1.1.0';
+const VERSION = '1.1.1';
 const VCC_VERSION = '2.1.10.0';   // the VCC source the core is built from (its Vcc.rc)
 const defaults = {
   cpu: 0, ram: 1, rgb: 1, scan: 0, throttle: 1, overclock: 0, touchJoy: 0, turboDisk: 0,
@@ -594,6 +594,7 @@ function tick(now) {
   const start = performance.now();
   for (let i = 0; i < frames; i++) {
     if (vcc.vcc_run_frame()) drew = true;
+    releaseHeldKeys();
     tapeAutoRunFrame();
     pumpAudio(fast);
     if (fast && performance.now() - start > 14) break;
@@ -661,7 +662,8 @@ const DIK = {
   NumLock: 0x45, ScrollLock: 0x46, Numpad7: 0x47, Numpad8: 0x48, Numpad9: 0x49,
   NumpadSubtract: 0x4A, Numpad4: 0x4B, Numpad5: 0x4C, Numpad6: 0x4D, NumpadAdd: 0x4E,
   Numpad1: 0x4F, Numpad2: 0x50, Numpad3: 0x51, Numpad0: 0x52, NumpadDecimal: 0x53,
-  F11: 0x57, F12: 0x58, NumpadEnter: 0x9C, ControlRight: 0x9D, NumpadDivide: 0xB5,
+  F11: 0x57, F12: 0x58, NumpadEnter: 0x1C,   // VCC's layouts have no keypad ENTER: make it ENTER
+  ControlRight: 0x9D, NumpadDivide: 0xB5,
   AltRight: 0xB8, Home: 0xC7, ArrowUp: 0xC8, PageUp: 0xC9, ArrowLeft: 0xCB,
   ArrowRight: 0xCD, End: 0xCF, ArrowDown: 0xD0, PageDown: 0xD1, Insert: 0xD2, Delete: 0xD3,
 };
@@ -689,18 +691,76 @@ function specialKey(e) {
   return false;
 }
 
+// Some Android keyboards and emulators (BlueStacks among them) leave
+// KeyboardEvent.code empty or nonstandard. Fall back to the key's meaning.
+const KEY_NAMES = { Enter: 'Enter', Backspace: 'Backspace', Escape: 'Escape', Tab: 'Tab', ' ': 'Space',
+  ArrowUp: 'ArrowUp', ArrowDown: 'ArrowDown', ArrowLeft: 'ArrowLeft', ArrowRight: 'ArrowRight', Home: 'Home', Shift: 'ShiftLeft', Control: 'ControlLeft', Alt: 'AltLeft' };
+function dikFor(e) {
+  if (DIK[e.code] !== undefined) return DIK[e.code];
+  if (e.keyCode === 13) return DIK.Enter;
+  const k = e.key || '';
+  if (KEY_NAMES[k]) return DIK[KEY_NAMES[k]];
+  if (/^[a-z]$/i.test(k)) return DIK['Key' + k.toUpperCase()];
+  if (/^[0-9]$/.test(k)) return DIK['Digit' + k];
+  return undefined;
+}
+
 function physicalKey(e, down) {
+  if (down) showKeyTest(e);
   if (!vcc || isDialogOpen()) return;
   if (keyJoystick(e, down)) return;
   if (/^F([3-9]|11)$/.test(e.code)) { e.preventDefault(); if (down && !e.repeat) specialKey(e); return; }
-  const code = DIK[e.code];
+  const code = dikFor(e);
   if (code === undefined) return;
   e.preventDefault();
   if (e.repeat) return;
   startAudio();
-  vcc.vcc_key(code, down ? 1 : 0);
+  keyChange(code, down ? 1 : 0);
+}
+
+// Each key's presses and releases are spaced at least KEY_MIN_FRAMES apart.
+// A key released within a frame or two of being pressed falls between two of
+// the CoCo's keyboard scans and is never seen, and some keyboards and
+// emulators send exactly that (BlueStacks's ENTER: down and up a millisecond
+// apart). A change that comes too soon waits, and everything typed after it
+// waits behind it, so keys reach the CoCo in the order they were typed.
+const KEY_MIN_FRAMES = 3;   // 50 ms at normal speed
+const keyLast = new Map(), keyQueue = [];
+let emuFrames = 0;
+const keyReady = (code) => emuFrames - (keyLast.get(code) ?? -KEY_MIN_FRAMES) >= KEY_MIN_FRAMES;
+function keyChange(code, state) {
+  keyQueue.push([code, state]);
+  drainKeys();
+}
+function drainKeys() {
+  while (keyQueue.length && keyReady(keyQueue[0][0])) {
+    const [code, state] = keyQueue.shift();
+    keyLast.set(code, emuFrames);
+    vcc.vcc_key(code, state);
+  }
+}
+// Called after every emulated frame.
+function releaseHeldKeys() {
+  emuFrames++;
+  drainKeys();
+}
+
+// ☰ → Configuration → Keyboard shows what the last physical key sent, so a
+// keyboard that misbehaves can be diagnosed.
+function showKeyTest(e) {
+  const el = $('keyTest');
+  if (!el) return;
+  const code = dikFor(e);
+  el.textContent = `Last key: code "${e.code}", key "${e.key}", keyCode ${e.keyCode} → ${code === undefined ? 'not a CoCo key' : 'CoCo key'}`;
 }
 window.addEventListener('keydown', (e) => physicalKey(e, true));
+// A button that keeps focus after a tap would be "clicked" again by a
+// physical ENTER or SPACE (it was: ENTER restarted video recording). Drop
+// focus after every tap so keys only ever go to the CoCo.
+document.addEventListener('click', (e) => {
+  const el = e.target.closest && e.target.closest('button, summary, a');
+  if (el) el.blur();
+});
 window.addEventListener('keyup', (e) => physicalKey(e, false));
 
 // ---------------------------------------------------------------- on-screen CoCo 3 keyboard
@@ -1741,8 +1801,12 @@ function screenshot() {
 }
 
 let recorder = null, recordTimer = null;
+// MP4 only with H.264 inside: asked for plain "video/mp4", Chromium puts
+// VP9 in the MP4, which Windows' players and many Android galleries refuse
+// to open. Without H.264, record WebM (VP8 plays in the most players).
 function pickVideoType() {
-  const types = ['video/mp4;codecs="avc1.42E01E,mp4a.40.2"', 'video/mp4;codecs=avc1', 'video/mp4', 'video/webm;codecs=vp9,opus', 'video/webm'];
+  const types = ['video/mp4;codecs="avc1.42E01E,mp4a.40.2"', 'video/mp4;codecs="avc1.4D401F,mp4a.40.2"', 'video/mp4;codecs="avc1.640028,mp4a.40.2"',
+    'video/mp4;codecs=avc1.42E01E', 'video/mp4;codecs=avc1', 'video/webm;codecs=vp8,opus', 'video/webm;codecs=vp8', 'video/webm'];
   return types.find((t) => window.MediaRecorder && MediaRecorder.isTypeSupported(t)) || '';
 }
 async function toggleRecording() {
@@ -1765,10 +1829,11 @@ async function toggleRecording() {
     $('btnRec').classList.remove('rec');
     $('btnRecMenu').textContent = '⏺ Record video';
     const blob = new Blob(chunks, { type: type || 'video/webm' });
+    if (blob.size < 1024) { toast('Nothing was recorded: record for at least a second'); return; }
     const ext = (type || 'video/webm').includes('mp4') ? 'mp4' : 'webm';
     const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
     saveToDevice(`vcca-${stamp}.${ext}`, new Uint8Array(await blob.arrayBuffer()));
-    if (ext !== 'mp4') toast('This device records WebM, not MP4', 4000);
+    if (ext !== 'mp4') toast('Saved as WebM: this device cannot record MP4 (H.264). VLC and web browsers play WebM.', 5000);
   };
   recorder.start(1000);
   $('btnRec').classList.add('rec');

@@ -8,6 +8,7 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.util.Base64;
 import android.view.View;
+import android.webkit.MimeTypeMap;
 import android.view.Window;
 import android.view.WindowManager;
 import android.webkit.JavascriptInterface;
@@ -122,6 +123,15 @@ public class MainActivity extends Activity {
         return "application/octet-stream";
     }
 
+    // A file's real type, so a video or picture is saved as one (and a
+    // document provider does not tack ".bin" onto the name). Disk and tape
+    // images have no registered type and stay application/octet-stream.
+    private static String mimeForSave(String name) {
+        int dot = name.lastIndexOf('.');
+        String type = dot < 0 ? null : MimeTypeMap.getSingleton().getMimeTypeFromExtension(name.substring(dot + 1).toLowerCase());
+        return type != null ? type : "application/octet-stream";
+    }
+
     // Called from JavaScript: saves a disk image wherever the user chooses.
     // Large files (hard drive images) arrive in pieces: saveBegin, saveChunk..., saveEnd.
     private ByteArrayOutputStream pendingParts;
@@ -161,7 +171,7 @@ public class MainActivity extends Activity {
                     pendingSave = all;
                     Intent i = new Intent(Intent.ACTION_CREATE_DOCUMENT);
                     i.addCategory(Intent.CATEGORY_OPENABLE);
-                    i.setType("application/octet-stream");
+                    i.setType(mimeForSave(pendingName));
                     i.putExtra(Intent.EXTRA_TITLE, pendingName);
                     startActivityForResult(i, REQ_SAVE);
                 }
@@ -175,7 +185,7 @@ public class MainActivity extends Activity {
                     pendingSave = Base64.decode(base64, Base64.DEFAULT);
                     Intent i = new Intent(Intent.ACTION_CREATE_DOCUMENT);
                     i.addCategory(Intent.CATEGORY_OPENABLE);
-                    i.setType("application/octet-stream");
+                    i.setType(mimeForSave(name));
                     i.putExtra(Intent.EXTRA_TITLE, name);
                     startActivityForResult(i, REQ_SAVE);
                 }
