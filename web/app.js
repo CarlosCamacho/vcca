@@ -47,7 +47,8 @@ const Store = {
   },
 };
 
-const VERSION = '2.1.9-android11';
+const VERSION = '1.1.0';
+const VCC_VERSION = '2.1.10.0';   // the VCC source the core is built from (its Vcc.rc)
 const defaults = {
   cpu: 0, ram: 1, rgb: 1, scan: 0, throttle: 1, overclock: 0, touchJoy: 0, turboDisk: 0,
   drives: [null, null, null, null],   // {key, name}
@@ -1145,7 +1146,7 @@ function wireUi() {
   $('helpDlg').addEventListener('click', (e) => { if (e.target.id === 'helpDlg') $('helpDlg').classList.remove('open'); });
   wireAccordions();
   new ResizeObserver(() => applyScanlines()).observe($('screenWrap'));
-  $('aboutVersion').textContent = 'Version ' + VERSION;
+  $('aboutVersion').textContent = `Version ${VERSION} · based on VCC ${VCC_VERSION}`;
   for (const el of document.querySelectorAll('a.bugLink')) el.href = bugReportUrl();
   if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
   $('btnKbd').onclick = () => {

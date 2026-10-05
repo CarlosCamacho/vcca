@@ -34,6 +34,9 @@ VCCA needs the CoCo 3's own ROM, which is copyrighted and not included. On
 first start, pick **coco3.rom** (required) and **disk11.rom** (for floppies).
 If you use VCC on Windows, both are in its folder.
 
+VCCA has its own version number, independent of VCC's and of Android's.
+☰ → Help → About shows it alongside the VCC version it's built on (currently VCC 2.1.10.0).
+
 ## Reporting bugs
 
 Found something that doesn't work? [Open a bug report](https://github.com/CarlosCamacho/vcca/issues/new/choose).
