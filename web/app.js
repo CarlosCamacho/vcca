@@ -47,7 +47,7 @@ const Store = {
   },
 };
 
-const VERSION = '1.1.1';
+const VERSION = '1.2.0';
 const VCC_VERSION = '2.1.10.0';   // the VCC source the core is built from (its Vcc.rc)
 const defaults = {
   cpu: 0, ram: 1, rgb: 1, scan: 0, throttle: 1, overclock: 0, touchJoy: 0, turboDisk: 0,
@@ -66,6 +66,7 @@ const defaults = {
   prnLF: 1,              // BitBanger: add LF after CR
   tape: null,            // {key, name, kind}: the tape in the deck
   tapeFast: 1,           // CAS fast load, and full speed while the tape plays
+  gime86: 0,             // GIME chip: 0 = 1987, 1 = 1986 (timer one line later)
 };
 let settings = Object.assign({}, defaults);
 // Settings are kept in Android's app preferences (SharedPreferences) and in
@@ -263,6 +264,7 @@ function applyConfig() {
   vcc.vcc_turbo_disk(settings.turboDisk ? 1 : 0);
   vcc.vcc_hires_ports(+settings.joyPorts.left.emu, +settings.joyPorts.right.emu);
   vcc.vcc_tape_fastload(+settings.tapeFast);
+  vcc.vcc_gime86(+settings.gime86);
 }
 
 async function mountDrives() {
@@ -1195,6 +1197,7 @@ function wireUi() {
   $('tapeRew').onclick = () => tapeRewind();
   $('tapeFwd').onclick = () => tapeForward();
   bindSelect('selTapeFast', 'tapeFast', applyConfig);
+  bindSelect('selGime', 'gime86', applyConfig);
   $('btnSnapLoad').onclick = () => loadSnapshotFile();
   $('btnShot').onclick = () => screenshot();
   $('btnRec').onclick = () => toggleRecording();

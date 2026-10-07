@@ -468,3 +468,7 @@ EXPORT(vcc_printer) int vcc_printer(int on, int addLF)
 	SetSerialParams(addLF ? 1 : 0);
 	return on ? OpenPrintFile("printer") : 1;
 }
+
+// GIME chip: 1 = 1986 (timer fires count + 2 lines after a write), 0 = 1987 (count + 1).
+void SetGimeTimer86(int is86);
+EXPORT(vcc_gime86) void vcc_gime86(int is86) { SetGimeTimer86(is86); }
