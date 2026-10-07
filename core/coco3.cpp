@@ -259,6 +259,13 @@ float RenderFrame (SystemState *RFState)
 			(gGimeGpu.*UpdateScreen[RFState->BitDepth])(RFState);
 	}
 
+	// VCCA: the GIME's VBORD interrupt fires as the beam leaves the active area
+	// and enters the bottom border, not at vertical sync. (The PIA's field sync,
+	// irq_fs, does fall at vertical sync.) Raised at VSYNC, it came about 21
+	// lines late for anything that counts lines from it, such as raster effects
+	// timed with the GIME timer. XRoar's tcc1014.c places it the same way.
+	GimeAssertVertInterupt();
+
 	// Bottom Border begins here.
 	RFState->Debugger.TraceCaptureScreenEvent(VCC::TraceEvent::ScreenBottomBorder, 0);
 	for (RFState->LineCounter=0;RFState->LineCounter < gGimeGpu.BottomBoarder;RFState->LineCounter++)
@@ -317,7 +324,6 @@ void VSYNC(unsigned char level)
 	{
 		EmuState.Debugger.TraceCaptureScreenEvent(VCC::TraceEvent::ScreenVSYNCLow, 0);
 		irq_fs(0);
-		GimeAssertVertInterupt();
 	}
 	else
 	{
