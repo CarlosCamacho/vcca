@@ -320,6 +320,9 @@ EXPORT(vcc_configure) void vcc_configure(int ram, int cpu, int rgb, int scanLine
 	SetupClock();
 }
 
+// GIME revision for its timer: 86 (counts n+2) or 87 (n+1). Takes effect at once.
+EXPORT(vcc_gime_timer) int vcc_gime_timer(int revision) { return SetGimeTimerRevision(revision); }
+
 EXPORT(vcc_reset) void vcc_reset(int hard) { EmuState.ResetPending = hard ? 2 : 1; }
 
 // Emulated-time clock for keyboard.cpp's paste queue: each frame advances it
