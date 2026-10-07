@@ -50,7 +50,7 @@ const Store = {
 const VERSION = '1.1.1';
 const VCC_VERSION = '2.1.10.0';   // the VCC source the core is built from (its Vcc.rc)
 const defaults = {
-  cpu: 0, ram: 1, rgb: 1, scan: 0, throttle: 1, overclock: 0, touchJoy: 0, turboDisk: 0,
+  cpu: 0, gime: 87, ram: 1, rgb: 1, scan: 0, throttle: 1, overclock: 0, touchJoy: 0, turboDisk: 0,
   drives: [null, null, null, null],   // {key, name}
   mpi: 1, switchSlot: 3, sticky: 1, hires: 0, diskRom: 'disk11',
   hdd: [null, null],                   // IDE master/slave: {disks, labels: {n: name}}
@@ -261,6 +261,7 @@ async function applyRoms() {
 function applyConfig() {
   vcc.vcc_configure(+settings.ram, +settings.cpu, +settings.rgb, 0, +settings.overclock);   // scan lines: applyScanlines
   vcc.vcc_turbo_disk(settings.turboDisk ? 1 : 0);
+  vcc.vcc_gime_timer(+settings.gime);
   vcc.vcc_hires_ports(+settings.joyPorts.left.emu, +settings.joyPorts.right.emu);
   vcc.vcc_tape_fastload(+settings.tapeFast);
 }
@@ -1224,6 +1225,7 @@ function wireUi() {
   $('btnPause').onclick = () => { paused = !paused; $('btnPause').textContent = paused ? 'Resume' : 'Pause'; };
 
   bindSelect('selCpu', 'cpu', () => { hardReset(); toast('CPU changed; machine reset'); });
+  bindSelect('selGime', 'gime', applyConfig);
   bindSelect('selRam', 'ram', () => { hardReset(); toast('Memory changed; machine reset'); });
   bindSelect('selMon', 'rgb', applyConfig);
   bindSelect('selScan', 'scan', applyScanlines);

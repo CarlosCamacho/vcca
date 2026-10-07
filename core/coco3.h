@@ -38,6 +38,7 @@ float RenderFrame (SystemState *);
 void SetTimerClockRate (unsigned char);	
 void RestartInterruptTimer(unsigned int);
 void SetMasterTickCounter(unsigned int);
+int SetGimeTimerRevision(int revision);
 void MiscReset();
 void PasteBASICWithNew();
 void PasteBASIC();

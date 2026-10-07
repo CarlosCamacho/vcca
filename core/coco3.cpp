@@ -88,6 +88,13 @@ static unsigned int CassIndex = 0;
 static unsigned int CassBufferSize = 0;
 double NanosToInterrupt=0;
 static int IntEnable=0;
+// Scanline-rate timer (TINS=0): the GIME counts HSYNC pulses, so it is kept in whole
+// lines and decremented in HSYNC() rather than run against the nanosecond clock.
+static int LineTimerEnable = 0;
+static unsigned int LineTimerCount = 0;
+static unsigned int LineTimerReload = 0;
+// Timer ticks added to the count: 1 = GIME '87 (n+1), 2 = GIME '86 (n+2).
+static unsigned int GimeTimerOffset = 1;
 static int SndEnable=1;
 static int OverClock=1;
 static unsigned char SoundOutputMode=0;	//Default to Speaker 1= Cassette
@@ -324,6 +331,11 @@ void HSYNC(unsigned char level)
 	if (level == 0)
 	{
 		EmuState.Debugger.TraceCaptureScreenEvent(VCC::TraceEvent::ScreenHSYNCLow, 0);
+		if (LineTimerEnable && --LineTimerCount == 0)
+		{
+			LineTimerCount = LineTimerReload;
+			GimeAssertTimerInterupt();
+		}
 		GimeAssertHorzInterupt();
 		irq_hs(0);
 	}
@@ -518,6 +530,8 @@ void RestartInterruptTimer(unsigned int timer)
 		// restart timer
 		NanosToInterrupt = MasterTickCounter;
 	}
+	// scanline rate: the count restarts, from the next HSYNC
+	LineTimerCount = LineTimerEnable ? LineTimerReload : 0;
 }
 
 //
@@ -548,14 +562,39 @@ void SetMasterTickCounter(unsigned int timer)
 {
 	UnxlatedTickCounter = timer & 0xFFF;
 
+	// Scanline rate: count whole HSYNC pulses. A write partway through a line still
+	// waits for the next HSYNC, as on the GIME, so a program that reloads the timer
+	// from its interrupt does not drift by its own latency.
+	if (TimerClockRate == 0)
+	{
+		IntEnable = 0;
+		LineTimerEnable = UnxlatedTickCounter > 0 ? 1 : 0;
+		LineTimerReload = UnxlatedTickCounter + GimeTimerOffset;
+		if (LineTimerCount == 0)	// (started from 0: RestartInterruptTimer sets the count)
+			LineTimerCount = LineTimerReload;
+		return;
+	}
+	LineTimerEnable = 0;
+
 	// if non-zero, update nanos to interrupt, otherwise if zero clear event.
 	IntEnable = UnxlatedTickCounter > 0 ? 1 : 0;
 
 	// Rate = { 63613.2315, 279.265 };
 	double Rate[2]={NANOSECOND/(TARGETFRAMERATE*LINESPERSCREEN),NANOSECOND/COLORBURST};
 	// Master count contains at least one tick. EJJ 10mar25
-	const unsigned int timerOffset = 1; // 1 = Gime'87, 2 = Gime'86
-	MasterTickCounter = Rate[TimerClockRate] * (UnxlatedTickCounter + timerOffset);
+	MasterTickCounter = Rate[TimerClockRate] * (UnxlatedTickCounter + GimeTimerOffset);
+}
+
+// GIME revision for the timer: 86 (counts n+2) or 87 (n+1, the default).
+// Returns the current one.
+int SetGimeTimerRevision(int revision)
+{
+	if (revision == 86 || revision == 87)
+	{
+		GimeTimerOffset = revision == 86 ? 2 : 1;
+		SetMasterTickCounter(UnxlatedTickCounter);
+	}
+	return GimeTimerOffset == 2 ? 86 : 87;
 }
 
 void MiscReset()
@@ -564,6 +603,9 @@ void MiscReset()
 	TimerClockRate=0;
 	MasterTickCounter=0;
 	UnxlatedTickCounter=0;
+	LineTimerEnable=0;
+	LineTimerCount=0;
+	LineTimerReload=0;
 //*************************
 	SoundInterupt=0;//PICOSECOND/44100;
 	NanosToSoundSample=SoundInterupt;
