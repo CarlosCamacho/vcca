@@ -12,12 +12,12 @@ const rect = (id) => page.evaluate((id) => { const r = document.getElementById(i
 await page.evaluate((sc) => { settings.scan = sc; applyScanlines(); setPanel('joy'); }, +(process.env.SCAN || 1));
 await page.waitForTimeout(500);
 console.log(tag, 'top', await rect('top'), 'menu', await rect('btnMenu'), 'help', await rect('btnHelp'), 'screen', await rect('screenWrap'), 'stick', await rect('stick'), 'fires', await rect('fires'), 'scan', await rect('scan'));
-await page.screenshot({ path: `${tag}-joy.png` });
-await page.screenshot({ path: `${tag}-crop.png`, clip: { x: 220, y: 100, width: 260, height: 90 } });
+await page.screenshot({ path: S + `${tag}-joy.png` });
+await page.screenshot({ path: S + `${tag}-crop.png`, clip: { x: 220, y: 100, width: 260, height: 90 } });
 if (tag === 'phone') {
   await page.evaluate(() => setPanel('kbd'));
   await page.evaluate(() => $('btnMenu').click()); await page.waitForTimeout(400);
-  await page.screenshot({ path: `${tag}-menu.png` });
+  await page.screenshot({ path: S + `${tag}-menu.png` });
   await page.evaluate(() => document.querySelector('details[data-sec=tape] summary').click()); await page.waitForTimeout(500);
   await pick('#tapeInsert', S + 'hello.cas');
   await page.waitForTimeout(300);
@@ -25,11 +25,11 @@ if (tag === 'phone') {
   for (let i = 0; i < 3; i++) { await page.evaluate(() => $('tapeFwd').click()); await page.waitForTimeout(100); fwd.push(await page.evaluate(() => tapeInfo().pos)); }
   console.log('cas FWD positions', fwd.join(' → '));
   await page.evaluate(() => { $('tapeRew').click(); $('tapePlay').click(); typeText('CLOAD\r'); }); await page.waitForTimeout(1200);
-  await page.screenshot({ path: `${tag}-tape.png` });
+  await page.screenshot({ path: S + `${tag}-tape.png` });
   await page.evaluate(() => $('menu').classList.remove('open'));
   await page.evaluate(() => $('btnHelp').click()); await page.waitForTimeout(300);
   await page.evaluate(() => document.querySelectorAll('#helpDlg details')[2].querySelector('summary').click()); await page.waitForTimeout(500);
-  await page.screenshot({ path: `${tag}-help.png` });
+  await page.screenshot({ path: S + `${tag}-help.png` });
   await page.evaluate(() => $('helpDlg').classList.remove('open'));
   // wav FWD: emulator-recorded WAV with two programs
   await pick('#tapeInsert', S + 'wavy22k.wav');
