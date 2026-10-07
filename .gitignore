@@ -16,3 +16,7 @@ roms/
 *.ccc
 
 node_modules
+
+# Screenshots written by test scripts
+/*.png
+test/*.png

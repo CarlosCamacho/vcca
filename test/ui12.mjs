@@ -31,9 +31,9 @@ await page.keyboard.press('F6'); await page.keyboard.press('F3');
 // 4. menu screenshots
 await page.evaluate(() => { settings.joyPorts.right.src = 'stick'; settings.joyPorts.left.src = 'none'; openMenu(); }); await page.waitForTimeout(400);
 await page.evaluate(() => { for (const d of document.querySelectorAll('#menuPanel details')) d.open = false; });
-await page.screenshot({ path: 'm-closed.png' });
+await page.screenshot({ path: S + 'm-closed.png' });
 for (const sec of ['joystick', 'tape', 'printer', 'about']) {
   await page.evaluate((s) => document.querySelector(`details[data-sec=${s}] summary`).click(), sec); await page.waitForTimeout(500);
-  await page.screenshot({ path: `m-${sec}.png` });
+  await page.screenshot({ path: S + `m-${sec}.png` });
 }
 console.log(logs.join('\n') || 'no errors'); await b.close();

@@ -81,5 +81,5 @@ await page.reload(); await page.waitForTimeout(1500);
 console.log('after reload', JSON.stringify(await page.evaluate(() => [settings.tape && settings.tape.name, tapeInfo()])));
 await page.evaluate(() => $('btnMenu').click()); await page.waitForTimeout(300);
 await page.evaluate(() => document.querySelector('#tapeName').scrollIntoView());
-await page.screenshot({ path: 'test/tape-menu.png' });
+await page.screenshot({ path: S + 'tape-menu.png' });
 console.log(logs.join('\n') || 'no errors'); await b.close();
