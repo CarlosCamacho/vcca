@@ -277,6 +277,9 @@
         <select id="selCpu"><option value="0">Motorola 6809</option><option value="1">Hitachi 6309</option></select></div>
       <div class="row"><label for="selRam">Memory</label>
         <select id="selRam"><option value="0">128K</option><option value="1">512K</option><option value="2">2048K</option><option value="3">8192K</option></select></div>
+      <div class="row"><label for="selGime">GIME chip</label>
+        <select id="selGime"><option value="0">1987 (VCC's default)</option><option value="1">1986</option></select></div>
+      <p class="note">The two GIME versions fire the timer interrupt one scanline apart. Programs that change the screen partway down by timer can look off by a line on the wrong one.</p>
       <div class="row"><label for="selSpeed">Speed</label>
         <select id="selSpeed"><option value="1">Normal</option><option value="0">Fast as possible</option></select></div>
       <div class="row"><label for="selOc">Double-speed overclock</label>
