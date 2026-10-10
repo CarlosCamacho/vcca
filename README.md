@@ -15,7 +15,7 @@ Android port by **CoCoScene**.
 <p align="center">
   <img src="docs/screenshots/landscape-joystick.png" width="760" alt="VCCA in landscape: joystick on the left, the CoCo 3 screen in the middle, fire buttons on the right, running Balloon Fighter">
 </p>
-<p align="center"><sub><i>Balloon Fighter</i> by CoCoScene, in landscape with the on-screen joystick.</sub></p>
+<p align="center"><sub><i>Balloon Fighter</i> by Carlos A. Camacho, in landscape with the on-screen joystick.</sub></p>
 
 <p align="center">
   <img src="docs/screenshots/portrait-keyboard.png" width="200" alt="Portrait: Disk Extended Color BASIC with a short program, and the on-screen CoCo 3 keyboard">
