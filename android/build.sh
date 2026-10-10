@@ -19,7 +19,7 @@ cd "$(dirname "$0")"
 FLAVOR=${1:-apk}
 SDK=/usr/lib/android-sdk
 JAR=$SDK/platforms/android-23/android.jar
-PLAY_ID=${VCCA_PLAY_ID:-com.carloscamacho.vcca}
+PLAY_ID=${VCCA_PLAY_ID:-com.cocoscene.vcca}
 BUNDLETOOL_VER=1.18.3
 BUNDLETOOL_SHA=a099cfa1543f55593bc2ed16a70a7c67fe54b1747bb7301f37fdfd6d91028e29
 BUNDLETOOL=tools/bundletool-all-$BUNDLETOOL_VER.jar
