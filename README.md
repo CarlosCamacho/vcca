@@ -28,7 +28,9 @@ Android port by **Carlos A. Camacho**.
 
 Download `VCCA.apk` from [Releases](https://github.com/CarlosCamacho/vcca/releases)
 and open it on your device. Android asks once to allow installs from your
-browser or file manager. Needs Android 7.0 or later.
+browser or file manager. Runs on Android 5.0 or later, with Android System
+WebView (or, on Android 7 to 9, Chrome) version 80 or later, updated from the
+Play Store.
 
 VCCA needs the CoCo 3's own ROM, which is copyrighted and not included. On
 first start, pick **coco3.rom** (required) and **disk11.rom** (for floppies).
@@ -94,7 +96,7 @@ port/      host.cpp   reset sequence, frame and audio hand-off, exported calls
            tape.cpp   VCC's Cassette.cpp, reading the front end's tape file
            vfs.cpp    Win32 file calls answered by the front end
 web/       the front end: screen, keyboard, joystick, audio, menus, help
-android/   manifest, activity, icons and the APK build script
+android/   manifest, activity, icons and build.sh (the APK and the Play bundle)
            (icon.sh makes the icons from assets/icon/vcca-icon.png)
 test/      6809 test ROMs and Node/Playwright test harnesses
 ```
@@ -120,15 +122,35 @@ sudo apt install clang lld wasi-libc libc++-dev-wasm32 libclang-rt-dev-wasm32 \
 Then:
 
 ```
-./build.sh                                   # -> out/vcc.wasm
-VCCA_KEYSTORE_PASS=… ./android/build-apk.sh  # -> out/VCCA.apk
+./build.sh                                    # -> out/vcc.wasm
+VCCA_KEYSTORE_PASS=… ./android/build.sh apk   # -> out/VCCA.apk
+VCCA_KEYSTORE_PASS=… ./android/build.sh play  # -> out/VCCA-play.aab
 ```
 
-The signing key is not in this repository. `build-apk.sh` uses
+The two Android builds come from the same source:
+
+| | `apk` | `play` |
+|---|---|---|
+| For | GitHub releases, sideloading | Google Play |
+| Format | `.apk` | `.aab` (App Bundle) |
+| Runs on | Android 5.0+ (API 21) | Android 7.0+ (API 24) |
+| Targets | API 34 | API 36, as Play requires |
+| Package | `com.vcce.vcc` | `com.carloscamacho.vcca` (`$VCCA_PLAY_ID`) |
+
+Both compile against `android-23.jar` from the Ubuntu packages. The Play
+build's newer behavior (Back through `OnBackInvokedCallback` on Android 16,
+padding clear of the system bars when drawn edge to edge) goes through
+reflection in `MainActivity.java`, switched on only where the device and the
+build's target both call for it. `build.sh play` fetches Google's
+[bundletool](https://github.com/google/bundletool) once into `android/tools/`
+and checks its SHA-256.
+
+The signing key is not in this repository. `build.sh` uses
 `android/vcc-release.keystore`, or `$VCCA_KEYSTORE`, and makes a new key if
 there is none. An update installs over an existing app only if it is signed
 with the same key, so a build signed with a different key must be installed
-fresh. The package ID stays `com.vcce.vcc` for the same reason.
+fresh, and the `apk` package ID stays `com.vcce.vcc` for the same reason. The
+same key signs the Play bundle as its upload key.
 
 To try the front end in a desktop browser, copy `out/vcc.wasm` into `web/`
 and serve that folder, for example `python3 -m http.server 8765` in `web/`.
@@ -168,6 +190,11 @@ speech. `test/shots.mjs` makes the screenshots above.
 
 The Becker port and DriveWire, VCC's VHD hard disk pak, the SDC, the RS-232
 pak and VCC's debugger windows.
+
+## Privacy
+
+VCCA collects nothing and has no network code of its own. See
+[PRIVACY.md](PRIVACY.md).
 
 ## License and credits
 

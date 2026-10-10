@@ -47,7 +47,7 @@ const Store = {
   },
 };
 
-const VERSION = '1.2.1';
+const VERSION = '1.3.0';
 const VCC_VERSION = '2.1.10.0';   // the VCC source the core is built from (its Vcc.rc)
 const defaults = {
   cpu: 0, ram: 1, rgb: 1, scan: 0, throttle: 1, overclock: 0, touchJoy: 0, turboDisk: 0,

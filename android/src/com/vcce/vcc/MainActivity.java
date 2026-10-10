@@ -5,9 +5,11 @@ package com.vcce.vcc;
 import android.app.Activity;
 import android.content.Intent;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.util.Base64;
 import android.view.View;
+import android.view.WindowInsets;
 import android.webkit.MimeTypeMap;
 import android.view.Window;
 import android.view.WindowManager;
@@ -19,6 +21,7 @@ import android.webkit.WebResourceResponse;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+import android.widget.FrameLayout;
 import android.widget.Toast;
 
 import java.io.ByteArrayOutputStream;
@@ -47,7 +50,12 @@ public class MainActivity extends Activity {
         getWindow().setNavigationBarColor(0xFF1C1E22);
 
         web = new WebView(this);
-        setContentView(web);
+        FrameLayout root = new FrameLayout(this);
+        root.setBackgroundColor(0xFF1C1E22);
+        root.addView(web);
+        setContentView(root);
+        if (targets(35)) keepClearOfSystemBars(root);
+        if (targets(36)) handleBackWithCallback();
         WebSettings s = web.getSettings();
         s.setJavaScriptEnabled(true);
         s.setDomStorageEnabled(true);
@@ -220,14 +228,76 @@ public class MainActivity extends Activity {
         }
     }
 
-    @Override
-    public void onBackPressed() {
-        // Let the page close its menu or dialog first.
-        web.evaluateJavascript("window.vccBack ? window.vccBack() : false", new ValueCallback<String>() {
-            public void onReceiveValue(String handled) {
-                if (!"true".equals(handled)) MainActivity.super.onBackPressed();
+    // True when both the device and this build are at least the given API
+    // level, which is when Android applies that level's behavior changes.
+    // The Play build targets 36 and the older-devices build 34, from the same
+    // source, so each change below switches on only where it applies.
+    private boolean targets(int api) {
+        return Build.VERSION.SDK_INT >= api && getApplicationInfo().targetSdkVersion >= api;
+    }
+
+    // Targeting API 35, the app is drawn edge to edge, under the status and
+    // navigation bars and the camera cutout. Pad the page clear of them so the
+    // joystick and keyboard stay reachable; the padding shows the colour the
+    // bars had before. The keyboard (IME) is left out, as adjustNothing did.
+    // Reflection, because the build compiles against an older android.jar.
+    private void keepClearOfSystemBars(final View root) {
+        root.setOnApplyWindowInsetsListener(new View.OnApplyWindowInsetsListener() {
+            public WindowInsets onApplyWindowInsets(View v, WindowInsets in) {
+                try {
+                    Class<?> type = Class.forName("android.view.WindowInsets$Type");
+                    int mask = (Integer) type.getMethod("systemBars").invoke(null)
+                             | (Integer) type.getMethod("displayCutout").invoke(null);
+                    Object i = WindowInsets.class.getMethod("getInsets", int.class).invoke(in, mask);
+                    Class<?> c = Class.forName("android.graphics.Insets");
+                    v.setPadding(c.getField("left").getInt(i), c.getField("top").getInt(i),
+                                 c.getField("right").getInt(i), c.getField("bottom").getInt(i));
+                } catch (Exception e) {
+                    v.setPadding(in.getSystemWindowInsetLeft(), in.getSystemWindowInsetTop(),
+                                 in.getSystemWindowInsetRight(), in.getSystemWindowInsetBottom());
+                }
+                return in;
             }
         });
+    }
+
+    // Let the page close its menu or dialog first; otherwise leave the app
+    // the way Back leaves a launcher activity (to the background, not finished).
+    private void back() {
+        web.evaluateJavascript("window.vccBack ? window.vccBack() : false", new ValueCallback<String>() {
+            public void onReceiveValue(String handled) {
+                if (!"true".equals(handled)) moveTaskToBack(true);
+            }
+        });
+    }
+
+    // Targeting API 36 on Android 16, onBackPressed is never called: Back
+    // arrives only through an OnBackInvokedCallback (API 33).
+    private void handleBackWithCallback() {
+        try {
+            Object dispatcher = Activity.class.getMethod("getOnBackInvokedDispatcher").invoke(this);
+            Class<?> cb = Class.forName("android.window.OnBackInvokedCallback");
+            Object callback = java.lang.reflect.Proxy.newProxyInstance(MainActivity.class.getClassLoader(), new Class<?>[]{cb},
+                new java.lang.reflect.InvocationHandler() {
+                    public Object invoke(Object proxy, java.lang.reflect.Method m, Object[] args) {
+                        if (m.getName().equals("onBackInvoked")) back();
+                        else if (m.getName().equals("hashCode")) return System.identityHashCode(proxy);
+                        else if (m.getName().equals("equals")) return proxy == args[0];
+                        else if (m.getName().equals("toString")) return "VCCA back";
+                        return null;
+                    }
+                });
+            // Looked up on the public interface: the dispatcher's own class is hidden.
+            Class.forName("android.window.OnBackInvokedDispatcher").getMethod("registerOnBackInvokedCallback", int.class, cb)
+                .invoke(dispatcher, 0 /* PRIORITY_DEFAULT */, callback);
+        } catch (Exception e) {
+            // Leaves Back to onBackPressed, which Android 16 may not call.
+        }
+    }
+
+    @Override
+    public void onBackPressed() {
+        back();
     }
 
     @Override

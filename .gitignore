@@ -3,6 +3,7 @@ obj/
 out/
 android/build/
 android/assets/
+android/tools/
 web/vcc.wasm
 
 # Signing keys: never commit
