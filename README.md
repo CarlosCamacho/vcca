@@ -135,7 +135,7 @@ The two Android builds come from the same source:
 | Format | `.apk` | `.aab` (App Bundle) |
 | Runs on | Android 5.0+ (API 21) | Android 7.0+ (API 24) |
 | Targets | API 34 | API 36, as Play requires |
-| Package | `com.vcce.vcc` | `com.carloscamacho.vcca` (`$VCCA_PLAY_ID`) |
+| Package | `com.vcce.vcc` | `com.cocoscene.vcca` (`$VCCA_PLAY_ID`) |
 
 Both compile against `android-23.jar` from the Ubuntu packages. The Play
 build's newer behavior (Back through `OnBackInvokedCallback` on Android 16,
