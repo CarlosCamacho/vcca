@@ -584,6 +584,21 @@
 
 <input type="file" id="filePick" style="display:none">
 <div id="toast"></div>
+<script>
+// Old-style JavaScript on purpose: on a WebView too old for app.js (it needs
+// Chrome 80: WebAssembly bulk memory, AudioWorklet, the ?? operator), app.js
+// cannot even be parsed and the screen would stay blank. Say why instead.
+(function () {
+  var ok = typeof WebAssembly === 'object' && typeof AudioWorkletNode === 'function';
+  try { new Function('return null ?? 1'); } catch (e) { ok = false; }
+  if (ok) return;
+  document.body.innerHTML = '<div style="padding:24px;font:16px sans-serif;color:#e8e6e3;max-width:560px">' +
+    '<h2>VCCA needs a newer WebView</h2>' +
+    '<p>This device\'s <b>Android System WebView</b> is too old to run VCCA (version 80 or later is needed).</p>' +
+    '<p>Update <b>Android System WebView</b> (on Android 7 to 9, update <b>Chrome</b>) from the Play Store, then open VCCA again.</p>' +
+    '<p style="opacity:.7">Found: ' + navigator.userAgent.replace(/</g, '&lt;') + '</p></div>';
+})();
+</script>
 <script src="app.js"></script>
 </body>
 </html>
