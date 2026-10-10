@@ -2,7 +2,7 @@
 
 *Last updated: October 10, 2026*
 
-VCCA, the Tandy Color Computer 3 emulator for Android by Carlos A. Camacho,
+VCCA, the Tandy Color Computer 3 emulator for Android by CoCoScene,
 does not collect, store, transmit or share any personal data.
 
 - **No accounts, ads, analytics or tracking.** VCCA contains no advertising,
