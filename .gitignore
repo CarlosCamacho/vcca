@@ -9,7 +9,7 @@ dist/*
 *.jks
 
 # Copyrighted ROMs and disk images used for testing
-roms/
+roms
 *.rom
 !test/ff16k.rom
 *.ccc
