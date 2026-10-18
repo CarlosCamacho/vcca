@@ -1,7 +1,8 @@
-// Makes the README screenshots: node test/shots.mjs (with web/ served on :8765
-// and coco3.rom, disk11.rom and a game disk in roms/).
+// Makes the README screenshots: node tools/screenshots.mjs, with the front end
+// served on :8765 (test/run.sh --serve) and coco3.rom, disk11.rom and a game
+// disk in roms/.
 import { chromium } from 'playwright';
-import { ROMS as U, TMP as S } from './paths.mjs';
+import { ROMS as U, TMP as S } from '../test/paths.mjs';
 const OUT = new URL('../docs/screenshots/', import.meta.url).pathname;
 const GAME = process.env.GAME || 'balloon.dsk';
 const b = await chromium.launch();
