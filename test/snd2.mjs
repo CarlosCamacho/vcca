@@ -12,7 +12,7 @@ const vcca = {
   file_close() {},
 };
 const wasi = { fd_write(fd,iov,n,nw){const dv=new DataView(mem.buffer);let t=0;for(let i=0;i<n;i++)t+=dv.getUint32(iov+i*8+4,true);dv.setUint32(nw,t,true);return 0;}, clock_time_get(id,p,o){new DataView(mem.buffer).setBigUint64(o,0n,true);return 0;} };
-const { instance } = await WebAssembly.instantiate(fs.readFileSync('../out/vcc.wasm'), { wasi_snapshot_preview1: new Proxy(wasi, { get: (t, k) => t[k] || (() => 0) }), vcca });
+const { instance } = await WebAssembly.instantiate(fs.readFileSync(new URL('../build/vcc.wasm', import.meta.url)), { wasi_snapshot_preview1: new Proxy(wasi, { get: (t, k) => t[k] || (() => 0) }), vcca });
 const x = instance.exports; mem = x.memory; x._initialize();
 const put = b => { const p = x.vcc_alloc(b.length + 1); const u = new Uint8Array(mem.buffer, p, b.length + 1); u.set(b); u[b.length] = 0; return p; };
 const strip = b => (b.length % 1024 === 2 ? b.subarray(2) : b);
