@@ -1,23 +1,20 @@
-# Build output
-obj/
-out/
-android/build/
-android/assets/
-android/tools/
-web/vcc.wasm
+# Build output: everything ./build.sh makes, except the release in dist/
+build/
+dist/*
+!dist/VCCA.apk
+!dist/SHA256SUMS
 
 # Signing keys: never commit
 *.keystore
 *.jks
 
 # Copyrighted ROMs and disk images used for testing
-roms/
+roms
 *.rom
 !test/ff16k.rom
 *.ccc
 
 node_modules
 
-# Screenshots written by test scripts
+# Screenshots written by scripts run from the repository root
 /*.png
-test/*.png

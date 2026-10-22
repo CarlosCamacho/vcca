@@ -24,28 +24,7 @@ Android port by **CoCoScene**.
   <img src="docs/screenshots/help.png" width="200" alt="The Help screen, open at setting up IDE hard drives">
 </p>
 
-## Install
-
-Download `VCCA.apk` from [Releases](https://github.com/CarlosCamacho/vcca/releases)
-and open it on your device. Android asks once to allow installs from your
-browser or file manager. Runs on Android 5.0 or later, with Android System
-WebView (or, on Android 7 to 9, Chrome) version 80 or later, updated from the
-Play Store.
-
-VCCA needs the CoCo 3's own ROM, which is copyrighted and not included. On
-first start, pick **coco3.rom** (required) and **disk11.rom** (for floppies).
-If you use VCC on Windows, both are in its folder.
-
-VCCA has its own version number, independent of VCC's and of Android's.
-☰ → Help → About shows it alongside the VCC version it's built on (currently VCC 2.1.10.0).
-
-## Reporting bugs
-
-Found something that doesn't work? [Open a bug report](https://github.com/CarlosCamacho/vcca/issues/new/choose).
-The form asks for your VCCA version, device and the steps to reproduce it.
-See [CONTRIBUTING.md](CONTRIBUTING.md) for more.
-
-## Features
+### What it does
 
 **Machine**
 - CoCo 3 with a Motorola 6809 or Hitachi 6309, 128K to 8 MB, RGB or composite monitor
@@ -67,48 +46,55 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for more.
 - Stereo Composer, Symphony 12 and CoCo PSG, which need no ROM
 - Glenside-compatible IDE interface at `$FF70` or `$FF50`
 
-**Input**
-- On-screen CoCo 3 keyboard in the XRoar layout, with sticky SHIFT, CTRL and ALT
-- Physical keyboards, with VCC's special keys (F3/F4 overclock, F5 reset, F6 monitor, F7 pause, F8 throttle, F9 hard reset, F11 full screen)
-- Left and right joystick ports, as in VCC: on-screen stick or game controller, touch on screen, keyboard, or none. Standard, Tandy Hi-Res or CC-MAX emulation per port
-- In landscape: stick, screen and fire buttons side by side, swappable for left-handed play
-- **Commands** tab: one-tap `LOADM"`, `RUN"`, `LIST`, `DIR`, `RUN`, `EXEC`, `CLOAD`, `CLOADM`, `CSAVE"` and more, plus seven slots for your own commands
-
 **Other**
 - BitBanger printer capture (`LLIST`, `PRINT#-2`) to text
 - Type a whole BASIC listing in, or copy the screen's text out
 - ROMs, disks, tapes and settings stay on the device between runs
 - Built-in Help covers every feature, including step-by-step hard drive setup, and **Report a bug** opens the bug form with your version and device filled in
 
-## How it works
+More in [docs/design.md](docs/design.md). Not ported yet: the Becker port and
+DriveWire, VCC's VHD hard disk pak, the **CoCoSDC**, the RS-232 pak and VCC's
+debugger windows.
 
-VCC is C++ written for Win32. VCCA compiles its emulation core to
-WebAssembly and runs it in an Android WebView, with the front end in HTML and
-JavaScript.
+## Requirements
 
-```
-core/      VCC's sources, edited only where Windows got in the way
-           (CPUs, GIME, PIAs, FD-502, Speech/Sound Pak, GMC, keyboard, joystick)
-compat/    a minimal Windows.h and friends
-port/      host.cpp   reset sequence, frame and audio hand-off, exported calls
-           pak.cpp    Multi-Pak and cartridges (VCC's, plus MAME's Stereo Composer,
-                      Symphony 12, CoCo PSG and Glenside IDE, ported)
-           tape.cpp   VCC's Cassette.cpp, reading the front end's tape file
-           vfs.cpp    Win32 file calls answered by the front end
-web/       the front end: screen, keyboard, joystick, audio, menus, help
-android/   manifest, activity, icons and build.sh (the APK and the Play bundle)
-           (icon.sh makes the icons from assets/icon/vcca-icon.png)
-test/      6809 test ROMs and Node/Playwright test harnesses
-```
+- **Android 5.0 or later** for `VCCA.apk` (Android 7.0 or later from Google
+  Play), with **Android System WebView version 80 or later** (on Android 7 to
+  9, **Chrome** 80 or later), updated from the Play Store. On an older WebView
+  VCCA says so instead of starting.
+- **The CoCo 3 ROM, `coco3.rom`**, and for floppies **`disk11.rom`**. They are
+  copyrighted and not included; if you use VCC on Windows, both are in its
+  folder. HDB-DOS for hard drives is built separately (see Building).
+- Optional: a physical keyboard or game controller.
+- VCCA does not emulate a **CoCoSDC** or DriveWire; floppies are `.dsk` images
+  in the four FD-502 drives, hard drives go through HDB-DOS.
 
-Disk, tape and hard drive images live on the JavaScript side, reached
-through imported functions, so a save state (a copy of the WebAssembly
-memory) stays small and never rolls back a disk. A save state loads only in
-the build that made it, checked by a hash of `vcc.wasm`.
+## Running
 
-Cartridge audio follows VCC: two 8-bit channels packed in a word, the high
-byte to the right speaker. Every cartridge with a sound output reports it
-explicitly, because a sample of `$00` is a real level, not silence.
+Download `VCCA.apk` from [Releases](https://github.com/CarlosCamacho/vcca/releases)
+and open it on your device; Android asks once to allow installs from your
+browser or file manager. It installs over earlier releases and keeps your
+ROMs, disks and settings.
+
+On first start, pick **coco3.rom** and **disk11.rom**. Then use ☰ → File →
+**Run…** on a `.dsk`, `.bin`, `.cas` or `.wav`: VCCA types the right
+`RUN"…"`, `LOADM"…":EXEC` or `CLOAD` for you. **Load…** inserts it without
+running it.
+
+VCCA has its own version number, independent of VCC's and of Android's.
+☰ → Help → About shows it alongside the VCC version it is built on
+(VCC 2.1.10.0).
+
+## Controls
+
+- On-screen CoCo 3 keyboard in the XRoar layout, with sticky SHIFT, CTRL and ALT
+- Physical keyboards, with VCC's special keys (F3/F4 overclock, F5 reset, F6 monitor, F7 pause, F8 throttle, F9 hard reset, F11 full screen)
+- Left and right joystick ports, as in VCC: on-screen stick or game controller, touch on screen, keyboard, or none. Standard, Tandy Hi-Res or CC-MAX emulation per port
+- In landscape: stick, screen and fire buttons side by side, swappable for left-handed play
+- **Commands** tab: one-tap `LOADM"`, `RUN"`, `LIST`, `DIR`, `RUN`, `EXEC`, `CLOAD`, `CLOADM`, `CSAVE"` and more, plus seven slots for your own commands
+
+Back closes an open menu or dialog; with none open it puts VCCA in the
+background, still running.
 
 ## Building
 
@@ -119,41 +105,34 @@ sudo apt install clang lld wasi-libc libc++-dev-wasm32 libclang-rt-dev-wasm32 \
   android-sdk-platform-23 aapt apksigner zipalign android-sdk-build-tools default-jdk
 ```
 
-Then:
+Pinned: **clang 18** (`build.sh` checks it), the Ubuntu 24.04 Android SDK
+packages (android-23 platform, aapt2 2.19), **bundletool 1.18.3** (fetched
+and checksummed by the build), **LWTOOLS 4.21** for the test ROMs.
 
 ```
-./build.sh                                    # -> out/vcc.wasm
-VCCA_KEYSTORE_PASS=… ./android/build.sh apk   # -> out/VCCA.apk
-VCCA_KEYSTORE_PASS=… ./android/build.sh play  # -> out/VCCA-play.aab
+./build.sh                                   # -> build/vcc.wasm
+VCCA_KEYSTORE_PASS=… ./build.sh              # -> also dist/VCCA.apk and dist/VCCA-play.aab
 ```
 
-The two Android builds come from the same source:
+The second form builds both Android packages and verifies them: signatures,
+the signing certificate, package names, versions and Android levels, and the
+bundle's structure.
 
-| | `apk` | `play` |
+| | `dist/VCCA.apk` | `dist/VCCA-play.aab` |
 |---|---|---|
 | For | GitHub releases, sideloading | Google Play |
-| Format | `.apk` | `.aab` (App Bundle) |
 | Runs on | Android 5.0+ (API 21) | Android 7.0+ (API 24) |
 | Targets | API 34 | API 36, as Play requires |
 | Package | `com.vcce.vcc` | `com.cocoscene.vcca` (`$VCCA_PLAY_ID`) |
 
-Both compile against `android-23.jar` from the Ubuntu packages. The Play
-build's newer behavior (Back through `OnBackInvokedCallback` on Android 16,
-padding clear of the system bars when drawn edge to edge) goes through
-reflection in `MainActivity.java`, switched on only where the device and the
-build's target both call for it. `build.sh play` fetches Google's
-[bundletool](https://github.com/google/bundletool) once into `android/tools/`
-and checks its SHA-256.
+The signing key is not in this repository. The build uses
+`./vcc-release.keystore`, or `$VCCA_KEYSTORE`, and makes a new key if there is
+none. An update installs over an existing app only if it is signed with the
+same key, so a build signed with a different key must be installed fresh. The
+same key signs the Play bundle as its upload key. The version is in `VERSION`.
 
-The signing key is not in this repository. `build.sh` uses
-`android/vcc-release.keystore`, or `$VCCA_KEYSTORE`, and makes a new key if
-there is none. An update installs over an existing app only if it is signed
-with the same key, so a build signed with a different key must be installed
-fresh, and the `apk` package ID stays `com.vcce.vcc` for the same reason. The
-same key signs the Play bundle as its upload key.
-
-To try the front end in a desktop browser, copy `out/vcc.wasm` into `web/`
-and serve that folder, for example `python3 -m http.server 8765` in `web/`.
+To try the front end in a desktop browser: `test/run.sh --serve`, then open
+http://127.0.0.1:8765/.
 
 ### HDB-DOS
 
@@ -169,34 +148,49 @@ make -C toolshed/hdbdos hdblba.rom      # IDE, LBA, at $FF70
 Load `hdblba.rom` in VCCA under Cartridge → System ROMs, and set
 **Disk controller ROM** to HDB-DOS.
 
-### Tests
-
-The harnesses drive the real front end in Chromium. Put `coco3.rom` and
-`disk11.rom` in `roms/` (git ignores it, along with every `.rom`), install
-Playwright with `npm i playwright`, serve `web/` on port 8765, then for
-example:
+## Testing
 
 ```
-node test/tape.mjs      # CSAVE, CLOAD, CSAVEM, CLOADM, and .wav loading through Run
-node test/tape5.mjs     # FWD to the second program on .cas and .wav tapes
-node test/ui12.mjs      # printer capture, joystick ports, function keys
+test/run.sh            # after ./build.sh
 ```
 
-`testrom.asm`, `soundrom.asm` and `sscrom.asm` are 6809 test ROMs (assembled
-with `lwasm`) for the CPU and video, the sound cartridges and Speech/Sound Pak
-speech. `test/shots.mjs` makes the screenshots above.
+Needs Node with Playwright (`npm i playwright`) and `coco3.rom` and
+`disk11.rom` in `roms/` (ignored by git, as is every `.rom`). The tests drive
+the real front end in Chromium, or run test ROMs against `vcc.wasm` directly;
+[test/README.md](test/README.md) lists them.
 
-## Not ported yet
+**What has been tested where:** [docs/testing.md](docs/testing.md). In short,
+every result so far comes from Chromium on a desktop, the owner's Android
+devices and BlueStacks. **Nothing has been checked on a real CoCo 3**, and the
+Play build's Android 15/16 code has not run on a device yet.
 
-The Becker port and DriveWire, VCC's VHD hard disk pak, the SDC, the RS-232
-pak and VCC's debugger windows.
+### Reporting bugs
 
-## Privacy
+Found something that doesn't work? [Open a bug report](https://github.com/CarlosCamacho/vcca/issues/new/choose).
+The form asks for your VCCA version, device and the steps to reproduce it;
+☰ → Help → **Report a bug** fills the first two in. See
+[CONTRIBUTING.md](CONTRIBUTING.md).
 
-VCCA collects nothing and has no network code of its own. See
-[PRIVACY.md](PRIVACY.md).
+## Files
 
-## License and credits
+```
+src/core/       VCC 2.1.10.0's emulation core (C++), with VCCA's fixes
+src/compat/     a minimal Windows.h for it
+src/port/       glue: frames, audio, cartridges, tape, file access
+src/web/        the front end (HTML/JS)
+src/android/    manifest, MainActivity.java, launcher icons
+tools/          build-android.sh, make-icons.sh, screenshots.mjs and helpers
+test/           test ROMs (.asm + assembled .raw), harnesses, run.sh
+assets/icon/    the icon artwork everything else is made from
+docs/           design, technical notes, decisions, test log, screenshots
+dist/           the current release: VCCA.apk and SHA256SUMS
+VERSION         the version, read by the build
+CHANGELOG.md    every release, with what each one taught
+```
+
+How it fits together is in [docs/technical.md](docs/technical.md).
+
+## Credits and license
 
 VCCA is free software under the [GNU General Public License v3.0](LICENSE)
 or (at your option) any later version, as VCC is.
@@ -214,3 +208,6 @@ or (at your option) any later version, as VCC is.
   included.
 - The CoCo 3 and Disk BASIC ROMs are copyrighted by Tandy and Microsoft and
   are not included.
+
+VCCA collects nothing and has no network code of its own: see
+[PRIVACY.md](PRIVACY.md).
