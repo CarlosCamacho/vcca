@@ -19,8 +19,8 @@ BSD-3-Clause, compatible, with their notices kept in the sources.
 
 ## 3. Bug reports welcome, code contributions not (2026-10-05)
 
-The owner wants people to download and report bugs; only the owner (and
-Claude, working for the owner) push code. GitHub: issue forms
+The owner wants people to download and report bugs; only the owner pushes
+code. GitHub: issue forms
 (`.github/ISSUE_TEMPLATE`), `CONTRIBUTING.md` saying pull requests are not
 accepted, a ruleset blocking force-pushes and deletion of `main`, private
 vulnerability reporting. Commits are authored by the owner, with no

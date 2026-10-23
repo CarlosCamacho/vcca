@@ -28,12 +28,12 @@ cutting a release, `git checkout dist/` afterwards.
 ## Rules with reasons
 
 - **Commits are authored `Carlos Camacho <idevgames@gmail.com>`, with no
-  Co-Authored-By or Claude-Session trailers.** The owner asked for this; the
+  Co-Authored-By or session-link trailers.** The owner asked for this; the
   public contributor list shows only the owner.
 - **Never commit the keystore or its password, or any ROM.** The key signs
   every update (a different key cannot update installed copies); the ROMs are
   Tandy's and Microsoft's. `.gitignore` covers both; check `git status` anyway.
-- **Work on a branch (`claude/<topic>`) and arrive on `main` by pull request**
+- **Work on a branch (`dev/<topic>`) and arrive on `main` by pull request**
   when the owner asks for one. `main` must build and pass `test/run.sh`.
 - **The version is `VERSION`.** `build.sh` fails if `src/web/app.js` disagrees.
   Bump `android:versionCode` in `src/android/AndroidManifest.xml` with every
