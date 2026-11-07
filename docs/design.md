@@ -37,7 +37,8 @@ Disk, tape and hard drive images stay on the device between runs.
 
 FD-502, program paks, Orchestra-90 CC, Speech/Sound Pak, Game Master
 Cartridge, Stereo Composer, Symphony 12, CoCo PSG, Glenside IDE at `$FF70` or
-`$FF50`.
+`$FF50`, and the emesDOS09 smart cartridge (its ROM and `$FF40` controller, with an
+SD image; the controller is the firmware core in `src/port/emes/`).
 
 ## Input
 

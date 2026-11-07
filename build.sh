@@ -33,11 +33,21 @@ core/tcc1014registers.cpp core/mc6821.cpp core/iobus.cpp core/coco3.cpp core/key
 core/keyboardLayout.cpp core/joystickinput.cpp core/fd502/wd1793.cpp core/fd502/distortc.cpp
 core/ssc/tms7000.cpp core/ssc/ay8913.cpp core/ssc/sp0256.cpp core/ssc/ssc_core.cpp core/gmc/sn76496.cpp
 port/vfs.cpp port/pak.cpp port/tape.cpp port/host.cpp"
+EMES_SRCS="host_mailbox fat16_ro fat16_rw fat16_meta fat16_check coco_image ide_image partition_fat"
 OBJS=""
 for s in $SRCS; do
 	o=build/obj/$(echo $s | tr / _).o
 	if [ ! -f $o ] || [ src/$s -nt $o ] || [ -n "$REBUILD" ]; then
 		$CXX $FLAGS -c src/$s -o $o &
+	fi
+	OBJS="$OBJS $o"
+done
+# The emesDOS09 controller core is C (port/emes/README.md); main.c is compiled
+# as part of host_mailbox.c.
+for s in $EMES_SRCS; do
+	o=build/obj/emes_$s.o
+	if [ ! -f $o ] || [ src/port/emes/$s.c -nt $o ] || [ -n "$REBUILD" ]; then
+		clang --target=wasm32-wasi --sysroot=/usr -std=c99 -O2 -DNDEBUG -DEMES_HOST_SD -Wno-everything -c src/port/emes/$s.c -o $o &
 	fi
 	OBJS="$OBJS $o"
 done

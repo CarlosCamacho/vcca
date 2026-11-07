@@ -45,6 +45,7 @@ Android port by **CoCoScene**.
 - FD-502 disk controller, program paks, Orchestra-90 CC, Speech/Sound Pak, Game Master Cartridge
 - Stereo Composer, Symphony 12 and CoCo PSG, which need no ROM
 - Glenside-compatible IDE interface at `$FF70` or `$FF50`
+- emesDOS09 smart cartridge: its ROM and controller, with an SD card image (the ROM does not boot on the CoCo 3 yet; see the changelog)
 
 **Other**
 - BitBanger printer capture (`LLIST`, `PRINT#-2`) to text

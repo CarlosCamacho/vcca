@@ -5,6 +5,7 @@ the only Android devices reported so far are the owner's.
 
 | Date | Build | Venue | Tester | Result |
 |---|---|---|---|---|
+| 2026-11-07 | `dev/emesdos09-pak` (VCCA 1.3.0 + emesDOS09 cartridge) | Node + `vcc.wasm` (`test/emes.mjs`), CoCo 3 core, `coco3.rom`; emesDOS09 firmware core commit `7c3115d`, rc2 ROM and SD image | build agent | **Cartridge works at the bus:** a 6809 program gets IDENTIFY `E9CT` protocol 2.2, VOLUME_MOUNT and 5 root-directory entries (same as the C host test); with a plain ROM pak all checks fail. timer, vbord, ui12, tape, tape3, tape4, tape5 still pass. **The ROM does not boot on this CoCo 3 core:** `FATAL RAM`, because Super BASIC's reset copies the cartridge's `$C000`-`$DFFF` into RAM (see CHANGELOG, Learned). **Not run:** any Android device, the new Multi-Pak menu entry, a real CoCo 3 |
 | 2026-10-18 | 1.3.0 (reorganized tree) | Chromium (Playwright), `test/run.sh` | Carlos Camacho | timer, vbord, ui12, tape, tape3, tape4, tape5 pass. Rebuilt `VCCA.apk` has the same files as the 1.3.0 release. |
 | 2026-10-10 | 1.3.0 | Chromium (Playwright) | Carlos Camacho | ui12 and vbord pass; too-old-WebView message appears only when AudioWorklet is removed. |
 | 2026-10-10 | 1.3.0 | bundletool 1.18.3 `validate`, `aapt dump badging` | Carlos Camacho | Play bundle valid; packages, versions and SDK levels as intended. **Not run on any Android device.** |
