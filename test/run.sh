@@ -31,7 +31,10 @@ done
 
 # Pass/fail tests first; the page-driving ones after. tape2, snd2 and ui11 take
 # arguments and are run by hand (test/README.md).
-TESTS=${*:-"timer vbord ui12 tape tape3 tape4 tape5"}
+# emes needs the emesDOS09 repository's dist/ (SD image and ROM): $EMES_DIST, or
+# ../emesdos09/dist beside this repository. Without it the test is left out.
+EMES=emes; [ -d "${EMES_DIST:-../emesdos09/dist}" ] || { EMES=""; echo "emes: skipped (no emesDOS09 dist/; set EMES_DIST)"; }
+TESTS=${*:-"timer vbord $EMES ui12 tape tape3 tape4 tape5"}
 failed=""
 for t in $TESTS; do
 	log=build/test-logs/$t.log

@@ -55,6 +55,9 @@
 #include <memory>
 #include <string>
 #include <vector>
+extern "C" {
+#include "emes/host_mailbox.h"
+}
 
 unsigned char disk_io_read(unsigned char port);
 void disk_io_write(unsigned char data, unsigned char port);
@@ -626,6 +629,51 @@ struct GmcCart : Cart
 	bool CartLine() const override { return !rom.empty(); }
 };
 
+
+// emesDOS09 smart cartridge: two 8 KiB ROM pages at $C000 and the controller
+// mailbox at $FF40-$FF4F. The controller is the firmware core in port/emes/
+// (see its README), and its SD card is the file "emessd" the host holds.
+static HANDLE gEmesSd = INVALID_HANDLE_VALUE;
+
+extern "C" bool emes_host_sd_read(uint32_t lba, uint8_t* sector)
+{
+	if (gEmesSd == INVALID_HANDLE_VALUE) return false;
+	DWORD got = 0;
+	SetFilePointer(gEmesSd, (LONG)(lba * 512), nullptr, FILE_BEGIN);
+	return ReadFile(gEmesSd, sector, 512, &got, nullptr) && got == 512;
+}
+
+extern "C" bool emes_host_sd_write(uint32_t, const uint8_t*) { return false; }	// read-only until the firmware enables writes
+
+struct EmesCart : Cart
+{
+	std::vector<unsigned char> rom;
+	explicit EmesCart(const unsigned char* data, size_t len) : rom(16384, 0xFF)
+	{
+		if (data) memcpy(rom.data(), data, std::min(len, rom.size()));
+		if (gEmesSd != INVALID_HANDLE_VALUE) CloseHandle(gEmesSd);
+		gEmesSd = CreateFile("emessd", GENERIC_READ, 0, nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
+		emes_host_init();
+	}
+	~EmesCart() override
+	{
+		if (gEmesSd != INVALID_HANDLE_VALUE) CloseHandle(gEmesSd);
+		gEmesSd = INVALID_HANDLE_VALUE;
+	}
+	const char* Name() const override { return "emesDOS09"; }
+	void Reset() override { emes_host_init(); }
+	unsigned char ReadPort(unsigned char port) override { return (port >= 0x40 && port <= 0x4F) ? emes_host_read(port & 0x0F) : 0; }
+	void WritePort(unsigned char port, unsigned char data) override { if (port >= 0x40 && port <= 0x4F) emes_host_write(port & 0x0F, data); }
+	// A0-A12 go straight to the flash; the page is CONTROL bit 7. The upper
+	// address lines are not decoded, so the page repeats through the window.
+	unsigned char ReadMemory(unsigned short address) override { return rom[((size_t)emes_host_rom_page() << 13) | (address & 0x1FFF)]; }
+	bool CartLine() const override { return true; }
+	void Status(char* buffer, size_t size) override
+	{
+		snprintf(buffer, size, "emesDOS09: %s, %u commands, ROM page %u", gEmesSd == INVALID_HANDLE_VALUE ? "no SD image" : "SD image", (unsigned)emes_host_commands(), (unsigned)emes_host_rom_page());
+	}
+};
+
 //----------------------------------------------------------------------------
 // Multi-Pak
 //----------------------------------------------------------------------------
@@ -662,7 +710,8 @@ static bool DiskInSlots()
 
 // type: 0 empty, 1 FD-502, 2 ROM pak, 3 Orchestra-90, 4 S/SC, 5 GMC,
 // 6 Stereo Composer, 7 Symphony 12, 8 CoCo PSG (data = optional firmware),
-// 10 IDE at $FF70, 11 IDE at $FF50 (drives are the files "ide0" and "ide1").
+// 10 IDE at $FF70, 11 IDE at $FF50 (drives are the files "ide0" and "ide1"),
+// 12 emesDOS09 (data = its 16 KiB ROM; the SD card is the file "emessd").
 // data/len is the cartridge's ROM; for the S/SC, data2/len2 is the SP0256 ROM.
 int PakInsert(int slot, int type, const unsigned char* data, size_t len, const unsigned char* data2, size_t len2)
 {
@@ -683,6 +732,7 @@ int PakInsert(int slot, int type, const unsigned char* data, size_t len, const u
 	case 8: gSlots[slot] = std::make_unique<CocoPsgCart>(data, len); break;
 	case 10: gSlots[slot] = std::make_unique<IdeCart>(0x70); break;
 	case 11: gSlots[slot] = std::make_unique<IdeCart>(0x50); break;
+	case 12: gSlots[slot] = std::make_unique<EmesCart>(data, len); break;
 	default: break;
 	}
 	UpdateCartLine();

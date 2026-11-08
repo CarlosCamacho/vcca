@@ -5,6 +5,25 @@ VCC 2.1.10.0 throughout. "Venue" says where a result was seen: nothing here
 has been checked on a real CoCo 3, and Android results name the device.
 
 ## [Unreleased]
+### Added
+- **emesDOS09 smart cartridge** (cartridge type 12): the 16 KiB ROM in two 8 KiB pages
+  (page = `$FF40` bit 7) and the controller mailbox at `$FF40`-`$FF4F`, with an SD card image
+  as the file `emessd` (read-only for now). The controller is the emesDOS09 firmware core,
+  copied unmodified into `src/port/emes/` at emesDOS09 commit `7c3115d` and run through
+  `host_mailbox.c`. Choose it in a Multi-Pak slot, then pick the ROM and the SD image.
+  `test/emes.mjs` runs a 6809 program against it: IDENTIFY (E9CT, protocol 2.2), VOLUME_MOUNT
+  and the root directory of `dist/fat16-superfloppy-sprint47-rc2.img` (5 entries, as the C host
+  test finds). With a plain ROM pak in its place every check fails.
+- Changes in `src/port` break save states made by earlier builds, as every core change does.
+
+### Learned
+- **A CoCo 3 does not leave a cartridge's `$C000`-`$DFFF` alone at boot.** With `coco3.rom` and the
+  emesDOS09 ROM in the slot, RAM was writable at `$D000` after boot and the cartridge had been read
+  8,194 times (8,192 plus the two `DK` bytes) before the first frame ended, so Super BASIC's reset
+  had copied the first 8 KiB into RAM. Bank-switching `$FF40` then changes nothing the CPU sees, and
+  the emesDOS09 ROM, which fetches its resident page from bank 1, stops at `FATAL RAM`. Seen in
+  VCCA only (VCC 2.1.10 core); not checked against a real CoCo 3. The cartridge is therefore
+  exercised from a program, not booted (`test/emes.mjs`).
 ### Changed
 - Repository reorganized to the CoCo project standard: sources under `src/`,
   scripts under `tools/`, one `./build.sh` that builds and verifies both

@@ -212,10 +212,10 @@ function cstr(p) {
 
 let haveRom = false, haveDiskRom = false, running = false, paused = false;
 
-const CART_TYPES = ['Empty', 'FD-502 disk controller', 'Program pak (ROM)', 'Orchestra-90 CC', 'Speech/Sound Pak', 'Game Master Cartridge', 'Stereo Composer', 'Symphony 12', 'CoCo PSG', 'Game Master Cartridge, sound only (disk games)', 'IDE hard drive interface ($FF70)', 'IDE hard drive interface ($FF50)'];
+const CART_TYPES = ['Empty', 'FD-502 disk controller', 'Program pak (ROM)', 'Orchestra-90 CC', 'Speech/Sound Pak', 'Game Master Cartridge', 'Stereo Composer', 'Symphony 12', 'CoCo PSG', 'Game Master Cartridge, sound only (disk games)', 'IDE hard drive interface ($FF70)', 'IDE hard drive interface ($FF50)', 'emesDOS09 smart cartridge (ROM + SD image)'];
 // Menu entries that are another cartridge type with no ROM.
 const NATIVE_TYPE = { 9: 5 };
-const NEEDS_FILE = { 2: true, 5: true };   // types whose ROM comes with the slot
+const NEEDS_FILE = { 2: true, 5: true, 12: true };   // types whose ROM comes with the slot
 
 // Some ROM dumps start with a 2-byte little-endian load address (00 80 = $8000 for the
 // CoCo 3 ROM, $C000 for a cartridge), e.g. a 32,770-byte coco3.rom. VCC wants
@@ -250,6 +250,8 @@ async function applyRoms() {
     else if (type === 4) { a = await getBytes('rom:ssc-pic'); b = await getBytes('rom:ssc-spo'); }
     else if (type === 8) a = await getBytes('rom:psg');   // optional menu firmware
     else if (NEEDS_FILE[type]) a = await getBytes(slot.key);
+    // The emesDOS09 cartridge's SD card is the file "emessd" (read-only for now).
+    if (type === 12 && slot.sdKey) { const sd = await Store.get(slot.sdKey); if (sd) putFile('emessd', new Uint8Array(sd), true); }
     if (type === 1 && !a) a = new Uint8Array(0);
     const pa = a ? toWasm(a) : 0, pb = b ? toWasm(b) : 0;
     vcc.vcc_insert_cart(i, NEEDS_FILE[type] && !a ? 0 : native, pa, a ? a.length : 0, pb, b ? b.length : 0);
@@ -1050,6 +1052,7 @@ function renderSlots() {
         toast('Only one FD-502 can be plugged in'); sel.value = slot ? slot.type : 0; return;
       }
       if (slot && slot.key) await Store.del(slot.key);
+      if (slot && slot.sdKey) await Store.del(slot.sdKey);
       if (NEEDS_FILE[type]) {
         const f = await pickFile('');
         if (!f) { sel.value = slot ? slot.type : 0; return; }
@@ -1057,6 +1060,16 @@ function renderSlots() {
         const key = `cart:${i}:${f.name}`;
         await Store.put(key, f.bytes.buffer);
         settings.slots[i] = { type, key, name: f.name };
+        if (type === 12) {
+          toast('Now choose the SD card image (a FAT16 .img)');
+          const sd = await pickFile('');
+          if (sd) {
+            const sdKey = `cart:${i}:sd`;
+            await Store.put(sdKey, sd.bytes.slice().buffer);
+            settings.slots[i].sdKey = sdKey;
+            settings.slots[i].name = f.name + ' + ' + sd.name;
+          }
+        }
       } else {
         settings.slots[i] = type ? { type } : null;
       }
