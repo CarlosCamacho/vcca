@@ -59,6 +59,7 @@ const defaults = {
   slots: [null, null, null, { type: 1 }],
   panel: 'kbd', showControls: true,
   joyCenter: 1,          // the on-screen stick springs back to the middle
+  joyLook: 'deluxe',     // deluxe, std (Radio Shack), wico, simple (joyart.js)
   joySide: 'left',       // stick on the left, fire buttons on the right; 'right' swaps
   picture: 'full',       // full (with border), title, zoomed
   cmdSlots: {},          // Commands tab user slots 10-16: text, | means ENTER
@@ -976,6 +977,116 @@ function keyJoystick(e, down) {
   return true;
 }
 
+// The stick drawn as a real controller (joyart.js, from XRoar for Android).
+// Its own buttons work as well as FIRE and 2: the case's red button is button 1,
+// the Wico's tip button 2. Touches are taken where they land: on a button, on
+// the stick's travel, or not at all.
+const art = { on: false, type: 'deluxe', g: null, cache: null, x: 0, y: 0, f1: false, f2: false, roles: new Map() };
+function stickArtOn() { return settings.joyLook && settings.joyLook !== 'simple' && typeof JoyArt !== 'undefined'; }
+function applyJoyLook() {
+  art.on = stickArtOn();
+  art.type = art.on ? settings.joyLook : 'deluxe';
+  document.body.classList.toggle('joy-art', art.on);
+  art.cache = null;
+  drawStickArt();
+}
+function drawStickArt() {
+  if (!art.on) return;
+  const cv = $('stickArt'), w = cv.clientWidth, h = cv.clientHeight;
+  if (!w || !h) return;
+  const dpr = window.devicePixelRatio || 1;
+  if (!art.cache || art.cache.width !== Math.round(w * dpr) || art.cache.height !== Math.round(h * dpr)) {
+    cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
+    art.g = JoyArt.layout(art.type, w, h);
+    art.cache = document.createElement('canvas');
+    art.cache.width = cv.width; art.cache.height = cv.height;
+    const c = art.cache.getContext('2d');
+    c.scale(dpr, dpr);
+    JoyArt.drawStatic(c, art.type, art.g);
+  }
+  const ctx = cv.getContext('2d');
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.clearRect(0, 0, cv.width, cv.height);
+  ctx.drawImage(art.cache, 0, 0);
+  ctx.scale(dpr, dpr);
+  JoyArt.drawDynamic(ctx, art.type, art.g, art.x, art.y, art.f1, art.f2);
+}
+function buildStickArt() {
+  const stick = $('stick');
+  const pos = (e) => { const r = $('stickArt').getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; };
+  const near = (x, y, cx, cy, r) => Math.hypot(x - cx, y - cy) <= r;
+  const role = (x, y) => {
+    const g = art.g;
+    if (!g) return null;
+    const onStick = near(x, y, g.sx, g.sy, g.R * 1.6);
+    // The Wico's tip button: its own size here (XRoar takes 1.6 times it, which
+    // covers most of the ball and leaves only a thin ring to grab the stick by).
+    if (g.hasFire2 && near(x, y, JoyArt.tipX(g, art.x), JoyArt.tipY(g, art.y), g.f2r * 1.1) && Math.abs(art.x) + Math.abs(art.y) < 0.2) return 'f2';
+    if (near(x, y, g.f1x, g.f1y, g.f1r * 1.5) && !onStick) return 'f1';
+    return onStick ? 'stick' : null;
+  };
+  const update = () => {
+    let b = joy.b & ~3, any1 = false, any2 = false;
+    for (const r of art.roles.values()) { if (r === 'f1') any1 = true; if (r === 'f2') any2 = true; }
+    if (any1 && !art.f1 && navigator.vibrate) navigator.vibrate(8);
+    if (any2 && !art.f2 && navigator.vibrate) navigator.vibrate(8);
+    art.f1 = any1; art.f2 = any2;
+    b |= (any1 || $('fire1').classList.contains('down') ? 1 : 0) | (any2 || $('fire2').classList.contains('down') ? 2 : 0);
+    joy.b = b;
+    joy.x = Math.round(31.5 + art.x * 31.5);
+    joy.y = Math.round(31.5 + art.y * 31.5);
+    sendJoy();
+    drawStickArt();
+  };
+  const moveStick = (x, y) => {
+    let dx = (x - art.g.sx) / art.g.R, dy = (y - art.g.sy) / art.g.R;
+    const d = Math.hypot(dx, dy);
+    if (d > 1) { dx /= d; dy /= d; }
+    art.x = dx; art.y = dy;
+  };
+  stick.addEventListener('pointerdown', (e) => {
+    if (!art.on) return;
+    e.stopImmediatePropagation();
+    const [x, y] = pos(e), r = role(x, y);
+    if (!r) return;
+    stick.setPointerCapture(e.pointerId);
+    startAudio();
+    art.roles.set(e.pointerId, r);
+    if (r === 'stick') moveStick(x, y);
+    update();
+  }, true);
+  stick.addEventListener('pointermove', (e) => {
+    if (!art.on) return;
+    e.stopImmediatePropagation();
+    if (art.roles.get(e.pointerId) !== 'stick') return;
+    moveStick(...pos(e));
+    update();
+  }, true);
+  const up = (e) => {
+    if (!art.on) return;
+    e.stopImmediatePropagation();
+    const r = art.roles.get(e.pointerId);
+    if (!r) return;
+    art.roles.delete(e.pointerId);
+    if (r === 'stick' && +settings.joyCenter && ![...art.roles.values()].includes('stick')) { art.x = 0; art.y = 0; }
+    update();
+  };
+  stick.addEventListener('pointerup', up, true);
+  stick.addEventListener('pointercancel', up, true);
+  if (window.ResizeObserver) new ResizeObserver(() => drawStickArt()).observe($('stickArt'));
+  $('selJoyLook').value = settings.joyLook || 'deluxe';
+  $('selJoyLook').onchange = () => {
+    settings.joyLook = $('selJoyLook').value;
+    // The real controllers: the Radio Shack stick stays put, the others spring back.
+    if (settings.joyLook !== 'simple') { settings.joyCenter = JoyArt.selfCentering(settings.joyLook) ? 1 : 0; $('selJoyCenter').value = String(settings.joyCenter); }
+    art.x = art.y = 0; art.roles.clear(); art.f1 = art.f2 = false;
+    saveSettings();
+    applyJoyLook();
+    joy.x = joy.y = 32; sendJoy();
+  };
+  applyJoyLook();
+}
+
 function buildJoystick() {
   const stick = $('stick'), knob = $('knob');
   let active = null;
@@ -991,10 +1102,10 @@ function buildJoystick() {
     joy.y = Math.round(31.5 + dy * 31.5);
     sendJoy();
   };
-  stick.addEventListener('pointerdown', (e) => { active = e.pointerId; stick.setPointerCapture(e.pointerId); startAudio(); move(e); });
-  stick.addEventListener('pointermove', (e) => { if (e.pointerId === active) move(e); });
+  stick.addEventListener('pointerdown', (e) => { if (art.on) return; active = e.pointerId; stick.setPointerCapture(e.pointerId); startAudio(); move(e); });
+  stick.addEventListener('pointermove', (e) => { if (!art.on && e.pointerId === active) move(e); });
   const center = (e) => {
-    if (e.pointerId !== active) return;
+    if (art.on || e.pointerId !== active) return;
     active = null;
     if (!+settings.joyCenter) return;   // non-centering: the stick stays where it was let go
     knob.style.left = '53px'; knob.style.top = '53px';
@@ -1009,6 +1120,7 @@ function buildJoystick() {
     el.addEventListener('pointerup', up);
     el.addEventListener('pointercancel', up);
   }
+  buildStickArt();
   // Tapping the port label opens the joystick settings.
   $('joyside').addEventListener('click', () => openMenu('joystick'));
   joyPortLabel();

@@ -69,6 +69,11 @@
   #joy { display: none; height: 190px; align-items: center; justify-content: space-around; }
   #joy.on { display: flex; }
   #stick { width: 170px; height: 170px; border-radius: 50%; background: radial-gradient(circle, #2f3238 0%, #1a1c20 70%); border: 2px solid #000; position: relative; touch-action: none; }
+  #stickArt { display: none; position: absolute; left: 0; top: 0; width: 100%; height: 100%; }
+  body.joy-art #stick { width: 200px; height: 200px; border-radius: 0; background: none; border: 0; }
+  body.joy-art #stickArt { display: block; }
+  body.land-joy.joy-art #stick { width: 184px; height: 184px; }
+  body.joy-art #knob { display: none; }
   #knob { width: 64px; height: 64px; border-radius: 50%; background: var(--accent); position: absolute; left: 53px; top: 53px; box-shadow: 0 3px 6px #000a; pointer-events: none; }
   .fire { width: 84px; height: 84px; border-radius: 50%; background: #b8322a; border: 2px solid #000; font-weight: 700; color: #fff; display: flex; align-items: center; justify-content: center; }
   .fire.down { background: #ff5a4d; }
@@ -219,7 +224,7 @@
       <div class="note">Slots 10–16: tap to type, hold to change.</div>
     </div>
     <div id="joy">
-      <div id="stick"><div id="knob"></div></div>
+      <div id="stick"><canvas id="stickArt"></canvas><div id="knob"></div></div>
       <div id="fires">
         <div class="fire" id="fire1">FIRE</div>
         <div class="fire" id="fire2" style="width:60px;height:60px;font-size:12px">2</div>
@@ -311,6 +316,8 @@
         </fieldset>
       </div>
       <p class="note">On-screen stick also takes a game controller. Keyboard: the arrow keys move, F1 and F2 fire. Touch on screen: your finger is the pen, and touching fires.</p>
+      <div class="row"><label for="selJoyLook">Joystick look</label>
+        <select id="selJoyLook"><option value="deluxe">TRS-80 Deluxe Joystick</option><option value="std">Radio Shack Joystick</option><option value="wico">Wico (two buttons)</option><option value="simple">Simple</option></select></div>
       <div class="row"><label for="selJoyCenter">On-screen stick</label>
         <select id="selJoyCenter"><option value="1">Springs back to center</option><option value="0">Stays where released</option></select></div>
       <div class="row"><label for="selJoySide">Landscape layout</label>
@@ -456,6 +463,8 @@
 
     <details class="sec"><summary>Joystick</summary>
       <ul>
+        <li><b>Joystick look</b> (☰ → Configuration → Joystick): the TRS-80 Deluxe Joystick, the Radio Shack joystick, a Wico, or a simple stick. Drag the stick; the red button on the case is button 1, and the Wico's white tip is button 2. FIRE and 2 beside it work too.</li>
+        <li>Like the real ones, the Radio Shack stick stays where you leave it and the others spring back; <b>On-screen stick</b> changes that.</li>
         <li>☰ → Configuration → Joystick sets each port, as in VCC: its <b>input</b> (on-screen stick or game controller, touch on screen, keyboard, or none) and its <b>emulation type</b> (Standard, Tandy Hi-Res Interface or CoCo Max). By default the on-screen stick is the right joystick.</li>
         <li>In landscape the stick, screen and fire buttons sit side by side. ☰ → Configuration → Joystick → <b>Joystick layout</b> swaps the sides.</li>
         <li><b>Springs back to center</b> acts like a self-centering stick; <b>Stays where released</b> like a Tandy deluxe stick with centering off.</li>
@@ -619,6 +628,7 @@
 })();
 </script>
 <script src="sdcard.js"></script>
+<script src="joyart.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

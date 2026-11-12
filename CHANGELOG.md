@@ -6,6 +6,13 @@ has been checked on a real CoCo 3, and Android results name the device.
 
 ## [Unreleased]
 ### Added
+- **The on-screen stick drawn as a real controller**: the TRS-80 Deluxe Joystick (the new
+  default), the Radio Shack joystick or a Wico, from the art in XRoar for Android, ported to the
+  browser's canvas (`src/web/joyart.js`). It stays analog. The red button on the case is button 1
+  and the Wico's white tip button 2; FIRE and 2 beside it still work. Choosing a look sets the
+  stick's centering to the real controller's (the Radio Shack stick stays put). "Simple" keeps
+  the old stick. `test/joyart.mjs` (26 checks, no ROM needed); `tools/joyart-preview.mjs`
+  renders the art as XRoar's `tools/artpreview` does.
 - **CoCoSDC** (cartridge type 13): the SD card controller, with an SD card of disk images and
   folders kept on the device and managed in ☰ → Cartridge → SD card. Command mode is VCC's SDC
   simulator (EJ Jaquay, 2025) ported onto VCCA's file system: sector reads and writes in word and
@@ -39,6 +46,13 @@ has been checked on a real CoCo 3, and Android results name the device.
 - Changes in `src/port` break save states made by earlier builds, as every core change does.
 
 ### Learned
+- **The Wico's tip button covered most of its ball.** XRoar for Android takes a touch within 1.6
+  times the tip's radius as the tip, which leaves only a thin ring of the ball to grab the stick
+  by. VCCA takes the tip's own size (1.1 times). Found by `test/joyart.mjs` [Chromium 1243]; the
+  XRoar app has the same zone.
+- **The art matches XRoar's**: rendered at XRoar's preview size, the canvas port differs from
+  `tools/artpreview`'s PNGs by 2.8-3.6/255 on average, the plastic grain and the font being the
+  rest [Chromium 1243 vs Java2D].
 - **VCC's WD1793 model ends a sector read on a 257th read of the data register or on a time-out**,
   and the time-out sets LOST DATA: a program that reads exactly 256 bytes, as a real WD1773 wants,
   finishes with status `$04` here. Seen through the CoCoSDC's floppy personality in `test/sdc.mjs`

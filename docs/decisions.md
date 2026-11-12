@@ -100,3 +100,14 @@ with the number of failures (`test/check.mjs`). The CoCoSDC tests run on the
 repository's own test ROM (`test/sdcrom.asm` as the system ROM), so they need no
 Tandy ROM; each of their checks was shown to fail on a deliberately broken
 build (13 breaks of the core for `sdc`, 6 of the front end for `sdcui`).
+
+## 11. The on-screen stick drawn as a real controller (2026-11-12)
+
+**Context:** the owner preferred the joystick art of their XRoar for Android app: three real
+controllers drawn from above, with their buttons on the case. **Choice:** port that drawing code
+to the browser's canvas almost line for line, so the two apps look the same, and make the TRS-80
+Deluxe Joystick the default (it is also VCCA's icon). VCCA's stick stays analog (XRoar's pad is a
+digital keyboard joystick). Choosing a look sets the centering to the real controller's, and the
+On-screen stick setting can still change it. The Wico's tip button takes a smaller touch zone than
+in XRoar, so the ball can be grabbed. **Consequence:** two copies of the art to keep in step;
+`tools/joyart-preview.mjs` renders VCCA's for comparison with XRoar's `tools/artpreview`.

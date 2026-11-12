@@ -21,6 +21,7 @@ the code it covers and watching it fail.
 |---|---|---|
 | `sdc` | the CoCoSDC through its registers, with `sdcrom.raw` as the machine's ROM: detection, flash banks, command-mode reads (word and byte mode), a write, errors, write protect, mounting, a new image, the listing, BUSY, the floppy personality | 26 checks |
 | `sdcui` | the CoCoSDC in the app: the SD card's files reach the CoCo, its writes and new images reach IndexedDB, the SD card manager, Run… with a `.dsk`, a reload | 14 checks |
+| `joyart` | the on-screen stick drawn as each controller: drag, the drawn buttons, centering, a touch on the bare case, the FIRE button, the Simple stick, landscape | 26 checks, no ROM |
 | `timer` | GIME timer in scanline mode, with `timerrom.raw` | every border band is the same height (prints `PASS`) |
 | `vbord` | GIME VBORD timing, with `vbordrom.raw` | the border colour changes exactly where the bottom border begins (prints `PASS`) |
 | `ui12` | printer capture, joystick ports, function keys | the printout is exact; JOYSTK values in range for each port; F4 sets overclock 4; F6 switches the monitor |

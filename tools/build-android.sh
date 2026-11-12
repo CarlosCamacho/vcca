@@ -47,7 +47,7 @@ esac
 
 [ -f build/vcc.wasm ] || { echo "build/vcc.wasm is missing: run ./build.sh" >&2; exit 1; }
 rm -rf $B && mkdir -p $B/classes $B/assets/web dist
-cp src/web/index.html src/web/app.js src/web/sdcard.js src/web/audio-worklet.js build/vcc.wasm $B/assets/web/
+cp src/web/index.html src/web/app.js src/web/sdcard.js src/web/joyart.js src/web/audio-worklet.js build/vcc.wasm $B/assets/web/
 javac -nowarn -Xlint:-options -source 8 -target 8 -bootclasspath $JAR -classpath $JAR -d $B/classes $(find src/android/src -name '*.java')
 $SDK/build-tools/debian/dx --dex --output=$B/classes.dex $B/classes
 aapt2 compile --dir src/android/res -o $B/res.zip

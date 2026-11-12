@@ -92,6 +92,7 @@ VCCA has its own version number, independent of VCC's and of Android's.
 ## Controls
 
 - On-screen CoCo 3 keyboard in the XRoar layout, with sticky SHIFT, CTRL and ALT
+- The on-screen stick drawn as a TRS-80 Deluxe Joystick, a Radio Shack joystick or a Wico, with working buttons on the case (the same art as XRoar for Android)
 - Physical keyboards, with VCC's special keys (F3/F4 overclock, F5 reset, F6 monitor, F7 pause, F8 throttle, F9 hard reset, F11 full screen)
 - Left and right joystick ports, as in VCC: on-screen stick or game controller, touch on screen, keyboard, or none. Standard, Tandy Hi-Res or CC-MAX emulation per port
 - In landscape: stick, screen and fire buttons side by side, swappable for left-handed play
@@ -205,6 +206,7 @@ or (at your option) any later version, as VCC is.
   fixes and enhancements by Bill Pierce, James Ross, Peter Westberg, James
   Rye, EJ Jaquay, Mike Rojas, Trey Tomes and Craig Allsop. CoCoSDC simulator by
   EJ Jaquay. GPL v3.
+- The joystick art is from [XRoar for Android](https://github.com/CarlosCamacho/xroar-android-64), by the same author.
 - **MAME** cartridge drivers, ported (BSD-3-Clause, notices kept in the
   sources): Stereo Composer, Symphony 12 and Speech/Sound Pak by tim lindner;
   CoCo PSG by Roberto Fernandez and Nigel Barnes (thanks to Ed Snider);
