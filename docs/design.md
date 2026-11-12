@@ -60,7 +60,17 @@ Grouped like VCC's menu: File, Edit, Configuration, Cartridge, Help, as
 accordions. Help covers every feature, with step-by-step hard drive setup, and
 **Report a bug** opens the GitHub form with version and device filled in.
 
+## CoCoSDC
+
+The SD card is a folder tree of disk images kept on the device (☰ → Cartridge
+→ SD card): add files, make folders, mount an image in drive 0 or 1, save one
+back to the device. Names become 8.3 capitals as on a FAT card. `STARTUP.CFG`
+(`0=NAME`, `1=NAME`, `D=FOLDER`) mounts at power-on, as on the card; a hard
+reset is a power-on, so other mounts are not kept across one. Run… with a
+`.dsk` puts it on the card and mounts it in drive 0. The CoCoSDC is the
+machine's disk controller: it and the FD-502 do not go in together.
+
 ## Not ported yet
 
-The Becker port and DriveWire, VCC's VHD hard disk pak, the CoCoSDC, the
+The Becker port and DriveWire, VCC's VHD hard disk pak, the
 RS-232 pak and VCC's debugger windows.

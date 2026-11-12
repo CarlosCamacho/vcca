@@ -1,6 +1,7 @@
 import { chromium } from 'playwright';
 import fs from 'fs';
 import { ROMS as U, TMP as S } from './paths.mjs';
+import { check, done } from './check.mjs';
 const b = await chromium.launch();
 const ctx = await b.newContext({ acceptDownloads: true });
 const page = await ctx.newPage(); const logs = []; page.on('pageerror', e => logs.push(e.message));
@@ -25,33 +26,38 @@ await page.waitForTimeout(500);
 await page.evaluate(() => tapeControl(2));
 let t0 = Date.now();
 await type('CSAVE"HELLO"\r'); await page.waitForTimeout(1000);
-console.log('csave:', last(await waitFor(/CSAVE"HELLO"\s*\n\s*OK/)), (Date.now() - t0) + 'ms');
+let r = await waitFor(/CSAVE"HELLO"\s*\n\s*OK/);
+check(!r.startsWith('TIMEOUT'), `CSAVE"HELLO" finished (${last(r)}, ${Date.now() - t0} ms)`);
 await page.evaluate(() => tapeControl(0));
 const rec = await page.evaluate(() => { const f = Files.get('tape'); return { size: f.data.length, first: tapeFirstFile(TAPE_CAS, f.data), info: tapeInfo() }; });
-console.log('recorded', JSON.stringify(rec));
+check(rec.first && rec.first.name === 'HELLO' && rec.first.type === 0, `the tape starts with a BASIC file named HELLO (${JSON.stringify(rec.first)}, ${rec.size} bytes)`);
 
 // 2. ML too, appended after the BASIC file
 await page.evaluate(() => tapeControl(2));
 await type('POKE&H3000,&H86:POKE&H3001,&H2A:POKE&H3002,&HB7:POKE&H3003,4:POKE&H3004,0:POKE&H3005,&H39\r'); await page.waitForTimeout(800);
 await type('CSAVEM"ML",&H3000,&H3005,&H3000\r'); await page.waitForTimeout(1000);
-console.log('csavem:', last(await waitFor(/CSAVEM.*\n\s*OK/)));
+r = await waitFor(/CSAVEM.*\n\s*OK/);
+check(!r.startsWith('TIMEOUT'), `CSAVEM"ML" finished (${last(r)})`);
 await page.evaluate(() => tapeControl(0));
 const cas = await page.evaluate(() => Array.from(Files.get('tape').data));
 fs.writeFileSync(S + 'hello.cas', Buffer.from(cas));
-console.log('cas bytes', cas.length);
+check(cas.length > rec.size, `the ML file was appended (${rec.size} → ${cas.length} bytes)`);
 
 // 3. Rewind, NEW, CLOAD, RUN
 await page.evaluate(() => { tapeRewind(); tapeControl(1); });
 await type('NEW\r'); await page.waitForTimeout(500);
 t0 = Date.now();
 await type('CLOAD\r'); await page.waitForTimeout(500);
-console.log('cload:', last(await waitFor(/CLOAD[\s\S]*OK\s*$/)), (Date.now() - t0) + 'ms');
+r = await waitFor(/CLOAD[\s\S]*OK\s*$/);
+check(!r.startsWith('TIMEOUT'), `CLOAD finished (${Date.now() - t0} ms)`);
 await type('RUN\r');
-console.log('run:', last(await waitFor(/TAPE OK/)));
+r = await waitFor(/TAPE OK/);
+check(!r.startsWith('TIMEOUT'), 'RUN of the CLOADed program prints TAPE OK');
 // 4. CLOADM continues from where the tape is
 await type('POKE&H400,96:CLOADM:EXEC\r');
 await waitFor(/EXEC[\s\S]*OK\s*$/);
-console.log('cloadm+exec: $400 =', await page.evaluate(() => vcc.vcc_peek(0x400).toString(16)), '(2a expected)');
+const p400 = await page.evaluate(() => vcc.vcc_peek(0x400));
+check(p400 === 0x2a, `CLOADM:EXEC ran the ML program: $400 = $${p400.toString(16)} (expected $2a)`);
 
 // 5. A WAV made from the CAS (22050 Hz, 16-bit stereo), through Run
 function casToWav(bytes, rate) {
@@ -73,13 +79,16 @@ fs.writeFileSync(wavPath, casToWav(cas, 22050));
 await type('NEW\r'); await page.waitForTimeout(500);
 t0 = Date.now();
 await pick('#cmdRun', wavPath);
-console.log('wav run:', last(await waitFor(/TAPE OK/, 120000)), (Date.now() - t0) + 'ms');
-console.log('tape after', JSON.stringify(await page.evaluate(() => [tapeInfo(), settings.tape])));
+r = await waitFor(/TAPE OK/, 120000);
+check(!r.startsWith('TIMEOUT'), `Run… of a 22 kHz stereo WAV loads and runs it (${Date.now() - t0} ms)`);
+const ta = await page.evaluate(() => ({ info: tapeInfo(), tape: settings.tape }));
+check(ta.tape && ta.tape.name === 'hello.wav' && ta.info.size > 0, `the WAV is the tape in the deck (${ta.tape && ta.tape.name}, ${ta.info.size} bytes)`);
 
 // 6. Survives a reload
 await page.reload(); await page.waitForTimeout(1500);
-console.log('after reload', JSON.stringify(await page.evaluate(() => [settings.tape && settings.tape.name, tapeInfo()])));
+const rl = await page.evaluate(() => ({ name: settings.tape && settings.tape.name, info: tapeInfo() }));
+check(rl.name === 'hello.wav' && rl.info.size === ta.info.size, `the tape is still in the deck after a reload (${rl.name}, ${rl.info.size} bytes)`);
 await page.evaluate(() => $('btnMenu').click()); await page.waitForTimeout(300);
 await page.evaluate(() => document.querySelector('#tapeName').scrollIntoView());
 await page.screenshot({ path: S + 'tape-menu.png' });
-console.log(logs.join('\n') || 'no errors'); await b.close();
+await done(logs, b);

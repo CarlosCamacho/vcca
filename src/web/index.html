@@ -363,6 +363,13 @@
       <div class="row"><button id="btnBlank">New blank disk…</button>
         <label class="note"><input type="checkbox" id="chkTurbo"> Fast disk</label></div>
     </details>
+    <details class="sec" data-sec="sdcard"><summary>SD card (CoCoSDC)</summary>
+      <p class="note" id="sdNote">Put the CoCoSDC in a Multi-Pak slot (☰ → Cartridge → Multi-Pak) to use the SD card. See Help → CoCoSDC.</p>
+      <div class="row"><b id="sdPath">/</b></div>
+      <div id="sdMounts" class="note"></div>
+      <div id="sdList"></div>
+      <div class="row"><button id="btnSdAdd">Add files…</button><button id="btnSdDir">New folder…</button></div>
+    </details>
     <details class="sec" data-sec="hdd"><summary>Hard drives (IDE)</summary>
       <p class="note">Needs HDB-DOS and an IDE interface: see Help → Hard drives.</p>
       <div id="hdds"></div>
@@ -393,7 +400,7 @@
       <p class="note"><b>VCCA</b>: <a href="https://github.com/VCCE/VCC">VCC</a> for Android, a Tandy Color Computer 3 emulator.<br>
         Android port by <b>CoCoScene</b>.</p>
       <p class="note"><b><a href="https://github.com/VCCE/VCC">VCC (Virtual Color Computer)</a></b>, copyright 2015 by Joseph Forgione. “Another classic computer canceled before it's time!”<br>
-        VCC repository and release packages maintained by Bill Pierce and Ed Jaquay. Adapted to Visual Studio by Gary Coulbourne and Wes Gale. Hitachi 6309 port by Walter Zambotti. Bug fixes and enhancements by Bill Pierce, James Ross, Peter Westberg, James Rye, EJ Jaquay, Mike Rojas, Trey Tomes and Craig Allsop.</p>
+        VCC repository and release packages maintained by Bill Pierce and Ed Jaquay. Adapted to Visual Studio by Gary Coulbourne and Wes Gale. Hitachi 6309 port by Walter Zambotti. Bug fixes and enhancements by Bill Pierce, James Ross, Peter Westberg, James Rye, EJ Jaquay, Mike Rojas, Trey Tomes and Craig Allsop. CoCoSDC simulator by EJ Jaquay.</p>
       <p class="note">VCCA runs VCC's emulation: the 6809 and 6309 CPUs, GIME, PIAs, FD-502 (WD1793), cassette, BitBanger, Speech/Sound Pak, Game Master Cartridge, Orchestra-90, Multi-Pak and IDE drive logic.</p>
       <p class="note"><b>MAME</b> cartridge drivers (BSD-3-Clause), ported: Stereo Composer, Symphony 12 and Speech/Sound Pak by tim lindner; CoCo PSG by Roberto Fernandez and Nigel Barnes (thanks to Ed Snider); Glenside IDE by Nigel Barnes; Orchestra-90 by Nathan Woods.</p>
       <p class="note"><b>HDB-DOS</b> by Boisy G. Pitre and contributors (ToolShed project).</p>
@@ -472,6 +479,18 @@
         <li>What the CoCo writes is kept. <b>Save</b> copies the disk image to your device.</li>
         <li><b>Fast disk</b> skips the drive's real timing.</li>
       </ul>
+    </details>
+
+    <details class="sec"><summary>CoCoSDC (SD card)</summary>
+      <p>The CoCoSDC replaces the floppy controller with an SD card full of disk images.</p>
+      <ol>
+        <li>☰ → Cartridge → Multi-Pak: choose <b>CoCoSDC</b> for slot 4 (in place of the FD-502), and the <b>SDC-DOS</b> ROM when asked. Cancel to use Disk BASIC 1.1 instead, which reaches the card's two drives through its floppy emulation.</li>
+        <li>☰ → Cartridge → SD card: <b>Add files…</b> puts .dsk images on the card. Names become 8.3 capitals, as on a real card.</li>
+        <li>Tap a disk to mount it in drive 0 or 1, or mount it from the CoCo (SDC-DOS: <b>DRIVE 0,"GAME.DSK"</b>).</li>
+        <li>A file named <b>STARTUP.CFG</b> holding <b>0=GAME.DSK</b> mounts that disk at every power-on.</li>
+      </ol>
+      <p>Run… with a .dsk puts it on the card and mounts it. What the CoCo writes stays on the card; <b>Save</b> copies an image to your device.</p>
+      <p class="note">Not emulated: SDF disk images, the 512-byte streaming commands and reprogramming the flash. The card answers BUSY briefly after each command, as a real one does; the exact timing is a guess.</p>
     </details>
 
     <details class="sec"><summary>Cassette tapes</summary>
@@ -599,6 +618,7 @@
     '<p style="opacity:.7">Found: ' + navigator.userAgent.replace(/</g, '&lt;') + '</p></div>';
 })();
 </script>
+<script src="sdcard.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

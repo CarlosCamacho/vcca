@@ -5,6 +5,7 @@ the only Android devices reported so far are the owner's.
 
 | Date | Build | Venue | Tester | Result |
 |---|---|---|---|---|
+| 2026-11-12 | `dev/cocosdc` (VCCA 1.3.0 + CoCoSDC) | Node + `vcc.wasm` (`test/sdc.mjs`, the repository's test ROM as system ROM, no Tandy ROM); Chromium 1243 via Playwright 1.63 (`test/sdcui.mjs`) | build agent | **sdc: 26 checks pass** (detection probe, flash banks, `Q`, word and byte mode reads, a write and its read-back, read past the end, write protect, mount with `.DSK` added, new image, `X:` of a missing file, `L:` listing, BUSY after a command, bytes sent before READY, a WD1793 read through the floppy personality). Each check fails on at least one of 13 deliberately broken builds. **sdcui: 14 checks pass** (STARTUP.CFG, the CoCo's write and new image reaching IndexedDB, the SD card manager, mounting from it, Run… with a `.dsk`, a reload); each fails on at least one of 6 broken front ends. **Not run:** timer, vbord, ui12, tape, tape3, tape4, tape5 (no `coco3.rom`/`disk11.rom` in this container), the newly asserted versions of the last five included; SDC-DOS (not available here); any Android device; a real CoCoSDC |
 | 2026-11-07 | `dev/emesdos09-pak` (VCCA 1.3.0 + emesDOS09 cartridge) | Node + `vcc.wasm` (`test/emes.mjs`), CoCo 3 core, `coco3.rom`; emesDOS09 firmware core commit `7c3115d`, rc2 ROM and SD image | build agent | **Cartridge works at the bus:** a 6809 program gets IDENTIFY `E9CT` protocol 2.2, VOLUME_MOUNT and 5 root-directory entries (same as the C host test); with a plain ROM pak all checks fail. timer, vbord, ui12, tape, tape3, tape4, tape5 still pass. **The ROM does not boot on this CoCo 3 core:** `FATAL RAM`, because Super BASIC's reset copies the cartridge's `$C000`-`$DFFF` into RAM (see CHANGELOG, Learned). **Not run:** any Android device, the new Multi-Pak menu entry, a real CoCo 3 |
 | 2026-10-18 | 1.3.0 (reorganized tree) | Chromium (Playwright), `test/run.sh` | Carlos Camacho | timer, vbord, ui12, tape, tape3, tape4, tape5 pass. Rebuilt `VCCA.apk` has the same files as the 1.3.0 release. |
 | 2026-10-10 | 1.3.0 | Chromium (Playwright) | Carlos Camacho | ui12 and vbord pass; too-old-WebView message appears only when AudioWorklet is removed. |
@@ -21,3 +22,5 @@ the only Android devices reported so far are the owner's.
   padding: no Android 15 or 16 device has run it.
 - Android 5 and 6, which the GitHub APK allows since 1.3.0.
 - Any emulation behavior against real hardware.
+- The CoCoSDC with SDC-DOS, and its BUSY timings against a real card.
+- The CoCoSDC's floppy personality with Disk BASIC 1.1 (`DIR`, `LOADM`, `SAVE`): only a direct WD1793 read has run.

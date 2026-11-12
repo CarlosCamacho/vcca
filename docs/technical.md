@@ -9,6 +9,7 @@ src/compat/    a minimal Windows.h and friends
 src/port/      host.cpp   reset sequence, frame and audio hand-off, exported calls
                pak.cpp    Multi-Pak and cartridges (VCC's, plus MAME's Stereo
                           Composer, Symphony 12, CoCo PSG and Glenside IDE, ported)
+               sdc.cpp    the CoCoSDC: VCC's SDC command mode, on the front end's SD card
                tape.cpp   VCC's Cassette.cpp, reading the front end's tape file
                vfs.cpp    Win32 file calls answered by the front end
                cxa.c      C++ runtime stubs for a build without exceptions
@@ -73,3 +74,35 @@ older one instead of showing a blank screen.
 
 APK builds are reproducible: aapt2 dates every entry 1980-01-01, and the build
 gives `classes.dex` the same date.
+
+## CoCoSDC
+
+`src/port/sdc.cpp` holds the card; `pak.cpp` makes it cartridge type 13.
+
+- **Command mode** (latch `$43` at `$FF40`) is VCC's SDC simulator (EJ Jaquay,
+  2025) with the host side replaced: sector reads and writes in word and byte
+  mode, `Q`/`I`/`C`/`V`/`>`/`+` replies, and the `M:`, `m:`, `N:`, `n:`, `D:`,
+  `L:`, `K:`, `R:`, `X:` blocks. Not ported: 512-byte streaming (`$90`,
+  `$D0`), SDF images, flash programming, the Cloud-9 clock.
+- **BUSY.** The card answers BUSY for a few scanlines after every command
+  (2 after a read or reply, 16 after a mount or directory change, 32 after a
+  sector write), and bytes of a block sent before READY are lost. VCC's
+  simulator answers at once. The real card's timings are not published:
+  these numbers are a guess, chosen so a program that does not wait fails.
+- **Errors.** A read past the end of an image or of an empty drive returns
+  FAILED + `$10`; a write to a read-only file FAILED + `$40`; a missing file
+  FAILED + `$10`; an image already mounted in the other drive FAILED + `$20`.
+- **Floppy personality** (any other latch value) is the FD-502's WD1793 model
+  (`wd1793.cpp`) with the card's two images as drives 0 and 1: reads, writes,
+  BUSY, DRQ and NMI as that model does them, not VCC's SDC floppy emulation
+  (no writes, no BUSY, DRQ held past the 256th byte). The WD1793 model is
+  global, so the CoCoSDC and an FD-502 exclude each other.
+- **Flash.** Eight 16K banks; bank 0 is the slot's ROM (SDC-DOS, or Disk BASIC
+  1.1 when none is given), bank 1 an optional second ROM. `$FF43` selects a
+  bank and reads back as bank | (`$FF42` & `$F8`), which is what the
+  designer's detection probe tests.
+- **The SD card** is held by the front end (`src/web/sdcard.js`): each file
+  is "sd:PATH" in the shared file table, opened through the same `file_*`
+  imports as any disk; folders and changes go through `sd_list`, `sd_mkdir`,
+  `sd_rename`, `sd_delete` and `sd_create`. The app stores each file in
+  IndexedDB as "sdf:PATH" and lists files and folders in its settings.

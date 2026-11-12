@@ -389,6 +389,12 @@ EXPORT(vcc_copy_screen_text) const char* vcc_copy_screen_text()
 }
 
 EXPORT(vcc_mount_disk) int vcc_mount_disk(int drive, const char* name) { return PakMountDisk(drive, name); }
+// CoCoSDC: mount a file on the SD card ("GAMES/X.DSK", "" ejects) in drive 0 or 1,
+// and the path of what is mounted ("" for none).
+int SdcMount(int drive, const char* path);
+const char* SdcMounted(int drive);
+EXPORT(vcc_sdc_mount) int vcc_sdc_mount(int drive, const char* path) { return SdcMount(drive, path); }
+EXPORT(vcc_sdc_mounted) const char* vcc_sdc_mounted(int drive) { return SdcMounted(drive); }
 EXPORT(vcc_unmount_disk) void vcc_unmount_disk(int drive) { PakUnmountDisk(drive); }
 EXPORT(vcc_turbo_disk) void vcc_turbo_disk(int on) { PakSetTurboDisk(on); }
 

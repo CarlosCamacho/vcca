@@ -120,6 +120,18 @@ struct Cart
 	virtual void Status(char* buffer, size_t size) { snprintf(buffer, size, "%s", Name()); }
 };
 
+// The WD1793 model (wd1793.cpp) keeps its state in globals, so there is one,
+// shared by the FD-502 and the CoCoSDC's floppy personality: one or the other.
+static void EnsureController()
+{
+	AssertInt = HostAssertInterrupt;
+	static bool controllerReady = false;
+	if (!controllerReady) {
+		InitController();
+		controllerReady = true;
+	}
+}
+
 // FD-502. Only one can exist: wd1793.cpp keeps its state in globals.
 struct DiskCart : Cart
 {
@@ -128,12 +140,7 @@ struct DiskCart : Cart
 	{
 		if (data && len)
 			memcpy(rom.data(), data, std::min<size_t>(len, rom.size()));
-		AssertInt = HostAssertInterrupt;
-		static bool controllerReady = false;
-		if (!controllerReady) {
-			InitController();
-			controllerReady = true;
-		}
+		EnsureController();
 	}
 	const char* Name() const override { return "FD-502"; }
 	bool IsDisk() const override { return true; }
@@ -708,10 +715,48 @@ static bool DiskInSlots()
 	return false;
 }
 
+// CoCoSDC (sdc.cpp). Its floppy personality is the WD1793 model above, so it
+// counts as the machine's disk controller and excludes an FD-502.
+void SdcPowerOn(const unsigned char* rom, size_t len, const unsigned char* rom2, size_t len2);
+void SdcPowerOff();
+void SdcReset();
+void SdcHSync();
+unsigned char SdcReadMemory(unsigned short address);
+unsigned char SdcReadPort(unsigned char port);
+void SdcWritePort(unsigned char port, unsigned char data);
+void SdcStatus(char* buffer, size_t size);
+
+struct SdcCart : Cart
+{
+	SdcCart(const unsigned char* data, size_t len, const unsigned char* data2, size_t len2)
+	{
+		EnsureController();
+		SdcPowerOn(data, len, data2, len2);
+	}
+	~SdcCart() override { SdcPowerOff(); }
+	const char* Name() const override { return "CoCoSDC"; }
+	bool IsDisk() const override { return true; }
+	void Reset() override { SdcReset(); }
+	void HSync() override { PingFdc(); SdcHSync(); }
+	unsigned char ReadPort(unsigned char port) override { return (port >= 0x40 && port <= 0x4F) ? SdcReadPort(port) : 0; }
+	void WritePort(unsigned char port, unsigned char data) override { if (port >= 0x40 && port <= 0x4F) SdcWritePort(port, data); }
+	unsigned char ReadMemory(unsigned short address) override { return SdcReadMemory(address); }
+	void Status(char* buffer, size_t size) override { SdcStatus(buffer, size); }
+};
+
+static bool SdcInSlots()
+{
+	for (auto& s : gSlots)
+		if (s && !strcmp(s->Name(), "CoCoSDC")) return true;
+	return false;
+}
+
 // type: 0 empty, 1 FD-502, 2 ROM pak, 3 Orchestra-90, 4 S/SC, 5 GMC,
 // 6 Stereo Composer, 7 Symphony 12, 8 CoCo PSG (data = optional firmware),
 // 10 IDE at $FF70, 11 IDE at $FF50 (drives are the files "ide0" and "ide1"),
-// 12 emesDOS09 (data = its 16 KiB ROM; the SD card is the file "emessd").
+// 12 emesDOS09 (data = its 16 KiB ROM; the SD card is the file "emessd"),
+// 13 CoCoSDC (data = flash bank 0, normally SDC-DOS; data2 = bank 1, optional;
+// the SD card is the files "sd:PATH" and the sd_* imports).
 // data/len is the cartridge's ROM; for the S/SC, data2/len2 is the SP0256 ROM.
 int PakInsert(int slot, int type, const unsigned char* data, size_t len, const unsigned char* data2, size_t len2)
 {
@@ -733,6 +778,10 @@ int PakInsert(int slot, int type, const unsigned char* data, size_t len, const u
 	case 10: gSlots[slot] = std::make_unique<IdeCart>(0x70); break;
 	case 11: gSlots[slot] = std::make_unique<IdeCart>(0x50); break;
 	case 12: gSlots[slot] = std::make_unique<EmesCart>(data, len); break;
+	case 13:
+		if (DiskInSlots()) return 0;	// it is the disk controller: no FD-502 beside it
+		gSlots[slot] = std::make_unique<SdcCart>(data, len, data2, len2);
+		break;
 	default: break;
 	}
 	UpdateCartLine();
@@ -746,7 +795,8 @@ void PakConfigure(int multiPak, int switchSlot)
 }
 
 bool PakHasDiskController() { return DiskInSlots(); }
-int PakMountDisk(int drive, const char* name) { return mount_disk_image(name, (unsigned char)drive); }
+// With a CoCoSDC the drives are its SD card's images (SdcMount), not the host's.
+int PakMountDisk(int drive, const char* name) { return SdcInSlots() ? 0 : mount_disk_image(name, (unsigned char)drive); }
 void PakUnmountDisk(int drive) { unmount_disk_image((unsigned char)drive); }
 void PakSetTurboDisk(int on) { gTurboDisk = on != 0; SetTurboDisk(on ? 1 : 0); }
 

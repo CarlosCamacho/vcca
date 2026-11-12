@@ -32,7 +32,7 @@ SRCS="core/mc6809.cpp core/hd6309.cpp core/tcc1014graphics.cpp core/tcc1014mmu.c
 core/tcc1014registers.cpp core/mc6821.cpp core/iobus.cpp core/coco3.cpp core/keyboard.cpp
 core/keyboardLayout.cpp core/joystickinput.cpp core/fd502/wd1793.cpp core/fd502/distortc.cpp
 core/ssc/tms7000.cpp core/ssc/ay8913.cpp core/ssc/sp0256.cpp core/ssc/ssc_core.cpp core/gmc/sn76496.cpp
-port/vfs.cpp port/pak.cpp port/tape.cpp port/host.cpp"
+port/vfs.cpp port/pak.cpp port/sdc.cpp port/tape.cpp port/host.cpp"
 EMES_SRCS="host_mailbox fat16_ro fat16_rw fat16_meta fat16_check coco_image ide_image partition_fat"
 OBJS=""
 for s in $SRCS; do

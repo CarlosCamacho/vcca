@@ -1,5 +1,7 @@
 import { chromium } from 'playwright';
 import { ROMS as U, TMP as S } from './paths.mjs';
+import fs from 'fs';
+import { check, done } from './check.mjs';
 const b = await chromium.launch();
 const page = await (await b.newContext({ viewport: { width: 412, height: 915 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true })).newPage();
 const logs = []; page.on('pageerror', e => logs.push(e.message)); page.on('dialog', d => d.accept());
@@ -7,13 +9,17 @@ await page.goto('http://127.0.0.1:8765/index.html'); await page.waitForTimeout(8
 async function pick(sel, file) { const [fc] = await Promise.all([page.waitForEvent('filechooser'), page.evaluate((s) => document.querySelector(s).click(), sel)]); await fc.setFiles(file); await page.waitForTimeout(600); }
 await pick('#wDisk', U + 'disk11.rom'); await pick('#wRom', U + 'coco3.rom');
 await page.waitForTimeout(2000);
+check(fs.existsSync(S + 'hello.cas'), 'hello.cas from test/tape.mjs is there (run tape first)');
 await pick('#tapeInsert', S + 'hello.cas');
 await page.evaluate(() => { tapeControl(1); typeText('CLOAD\r'); });
 await page.waitForTimeout(400);
 await page.evaluate(() => $('btnMenu').click()); await page.waitForTimeout(700);
 await page.evaluate(() => document.querySelector('#tapeName').scrollIntoView());
+const deck = await page.evaluate(() => ({ name: $('tapeName').textContent, mode: $('tapeMode').textContent }));
+check(deck.name.includes('hello.cas') && deck.mode === 'PLAY', `the deck shows the tape and PLAY (${deck.name.trim()}, ${deck.mode})`);
 await page.screenshot({ path: S + 'tape-menu.png' });
 await page.evaluate(() => { $('menu').classList.remove('open'); setPanel('cmd'); }); await page.waitForTimeout(1500);
 await page.screenshot({ path: S + 'tape-cmds.png' });
-console.log(await page.evaluate(() => $('status').textContent));
-console.log(logs.join('\n') || 'no errors'); await b.close();
+const st = await page.evaluate(() => $('status').textContent);
+check(/Play \d+%/.test(st), `the status line shows the tape playing (${st})`);
+await done(logs, b);

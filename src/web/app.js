@@ -67,6 +67,8 @@ const defaults = {
   tape: null,            // {key, name, kind}: the tape in the deck
   tapeFast: 1,           // CAS fast load, and full speed while the tape plays
   gime86: 0,             // GIME chip: 0 = 1987, 1 = 1986 (timer one line later)
+  sdFiles: [],           // the CoCoSDC's SD card: file paths (bytes in IndexedDB as "sdf:PATH")
+  sdDirs: [],            // and its folders
 };
 let settings = Object.assign({}, defaults);
 // Settings are kept in Android's app preferences (SharedPreferences) and in
@@ -148,6 +150,46 @@ function fileId(name) {
 }
 function putFile(name, data, readOnly) { Files.set(name, { data, readOnly: !!readOnly, dirty: false, chunks: new Set() }); }
 
+// The CoCoSDC's SD card (sdcard.js): each file is "sd:PATH" in Files, kept in
+// IndexedDB as "sdf:PATH"; the lists of files and folders are in settings.
+// Changes the CoCo makes (new images, folders, renames, deletes) arrive through
+// sdChanged; sector writes mark the file dirty and saveDirtyDisks stores them.
+let sdLoading = false, sdCwd = '';
+const SD = makeSdCard(Files, putFile, () => mem, sdChanged);
+function sdChanged(kind, a, b) {
+  if (sdLoading) return;
+  const files = new Set(settings.sdFiles);
+  if (kind === 'file') { files.add(a); const f = Files.get('sd:' + a); if (f) { f.dirty = false; Store.put('sdf:' + a, f.data.slice().buffer); } }
+  else if (kind === 'rename') { files.delete(a); files.add(b); Store.get('sdf:' + a).then((v) => { if (v) Store.put('sdf:' + b, v); Store.del('sdf:' + a); }); }
+  else if (kind === 'delete') { files.delete(a); Store.del('sdf:' + a); }
+  settings.sdFiles = [...files].sort();
+  settings.sdDirs = [...SD.dirs].sort();
+  saveSettings();
+  if ($('menu').classList.contains('open')) renderSd();
+}
+async function loadSdCard() {
+  sdLoading = true;
+  for (const d of settings.sdDirs || []) SD.dirs.add(d);
+  const kept = [];
+  for (const p of settings.sdFiles || []) {
+    const v = await Store.get('sdf:' + p);
+    if (v) { SD.add(p, new Uint8Array(v)); kept.push(p); }
+  }
+  settings.sdFiles = kept;
+  sdLoading = false;
+}
+const sdcSlot = () => (settings.slots || []).findIndex((x) => x && +x.type === 13);
+// A file name as a CoCoSDC shows it: 8.3, capitals, and not already in dir.
+function sdName(dir, name) {
+  const clean = (t, n) => t.toUpperCase().replace(/\s+/g, '').replace(/[^A-Z0-9_\-~!#$%&'()@^{}]/g, '_').slice(0, n);
+  const dot = name.lastIndexOf('.');
+  let base = clean(dot > 0 ? name.slice(0, dot) : name, 8) || 'DISK';
+  const ext = dot > 0 ? clean(name.slice(dot + 1), 3) : '';
+  const full = (b) => (dir ? dir + '/' : '') + b + (ext ? '.' + ext : '');
+  for (let n = 1; SD.isFile(full(base)) || SD.isDir(full(base)); n++) base = base.slice(0, 8 - String(n).length - 1) + '~' + n;
+  return full(base);
+}
+
 function fileImports() {
   const dec = new TextDecoder('latin1');
   const get = (id) => Files.get(fileNames[id]);
@@ -178,6 +220,7 @@ function fileImports() {
       return n;
     },
     file_close() {},
+    ...SD.imports(),
   };
 }
 
@@ -212,7 +255,7 @@ function cstr(p) {
 
 let haveRom = false, haveDiskRom = false, running = false, paused = false;
 
-const CART_TYPES = ['Empty', 'FD-502 disk controller', 'Program pak (ROM)', 'Orchestra-90 CC', 'Speech/Sound Pak', 'Game Master Cartridge', 'Stereo Composer', 'Symphony 12', 'CoCo PSG', 'Game Master Cartridge, sound only (disk games)', 'IDE hard drive interface ($FF70)', 'IDE hard drive interface ($FF50)', 'emesDOS09 smart cartridge (ROM + SD image)'];
+const CART_TYPES = ['Empty', 'FD-502 disk controller', 'Program pak (ROM)', 'Orchestra-90 CC', 'Speech/Sound Pak', 'Game Master Cartridge', 'Stereo Composer', 'Symphony 12', 'CoCo PSG', 'Game Master Cartridge, sound only (disk games)', 'IDE hard drive interface ($FF70)', 'IDE hard drive interface ($FF50)', 'emesDOS09 smart cartridge (ROM + SD image)', 'CoCoSDC (SD card)'];
 // Menu entries that are another cartridge type with no ROM.
 const NATIVE_TYPE = { 9: 5 };
 const NEEDS_FILE = { 2: true, 5: true, 12: true };   // types whose ROM comes with the slot
@@ -249,6 +292,7 @@ async function applyRoms() {
     else if (type === 3) a = await getBytes('rom:orch90');
     else if (type === 4) { a = await getBytes('rom:ssc-pic'); b = await getBytes('rom:ssc-spo'); }
     else if (type === 8) a = await getBytes('rom:psg');   // optional menu firmware
+    else if (type === 13) a = (slot.key && await getBytes(slot.key)) || await getBytes('rom:disk11');   // SDC-DOS, else Disk BASIC
     else if (NEEDS_FILE[type]) a = await getBytes(slot.key);
     // The emesDOS09 cartridge's SD card is the file "emessd" (read-only for now).
     if (type === 12 && slot.sdKey) { const sd = await Store.get(slot.sdKey); if (sd) putFile('emessd', new Uint8Array(sd), true); }
@@ -290,6 +334,10 @@ function mountBytes(drive, info, bytes) {
 // Disk writes land in wasm memory; copy changed images back to storage.
 async function saveDirtyDisks() {
   if (!vcc) return;
+  for (const p of SD.files()) {
+    const f = Files.get('sd:' + p);
+    if (f && f.dirty) { f.dirty = false; await Store.put('sdf:' + p, f.data.slice().buffer); }
+  }
   await saveHardDrives();
   await saveTape();
   for (let d = 0; d < 4; d++) {
@@ -444,6 +492,52 @@ function exportHardDrive(d) {
   saveToDevice(`vcca-${d ? 'slave' : 'master'}.img`, Files.get('ide' + d).data);
 }
 
+// ☰ → Cartridge → SD card: the card's folders and files, and what is mounted.
+function renderSd() {
+  const present = sdcSlot() >= 0;
+  $('sdNote').style.display = present ? 'none' : '';
+  if (!SD.isDir(sdCwd)) sdCwd = '';
+  $('sdPath').textContent = '/' + sdCwd;
+  const mounted = [0, 1].map((d) => (present && vcc ? cstr(vcc.vcc_sdc_mounted(d)) : ''));
+  const mbox = $('sdMounts');
+  mbox.innerHTML = '';
+  if (present) for (const d of [0, 1]) {
+    const r = document.createElement('div'); r.className = 'drive';
+    r.innerHTML = `<b>${d}</b><span class="name"></span>`;
+    r.querySelector('.name').textContent = mounted[d] || 'empty';
+    if (mounted[d]) { const b = document.createElement('button'); b.textContent = 'Eject'; b.onclick = () => { withStr('', (p) => vcc.vcc_sdc_mount(d, p)); renderSd(); }; r.appendChild(b); }
+    mbox.appendChild(r);
+  }
+  const box = $('sdList');
+  box.innerHTML = '';
+  const row = (label, cls) => { const r = document.createElement('div'); r.className = 'drive'; const n = document.createElement('span'); n.className = 'name ' + (cls || ''); n.textContent = label; r.appendChild(n); box.appendChild(r); return r; };
+  const btn = (r, label, fn) => { const b = document.createElement('button'); b.textContent = label; b.onclick = fn; r.appendChild(b); };
+  if (sdCwd) btn(row('..'), 'Open', () => { sdCwd = sdCwd.includes('/') ? sdCwd.slice(0, sdCwd.lastIndexOf('/')) : ''; renderSd(); });
+  const list = SD.entries(sdCwd) || [];
+  if (!list.length) row('(empty)');
+  for (const e of list) {
+    const path = (sdCwd ? sdCwd + '/' : '') + e.name;
+    if (e.dir) {
+      const r = row(e.name + '/');
+      btn(r, 'Open', () => { sdCwd = path; renderSd(); });
+      btn(r, 'Delete', () => { if (SD.remove(path) === -2) toast('Only an empty folder can be deleted'); renderSd(); });
+      continue;
+    }
+    const r = row(`${e.name}  ${Math.round(e.size / 1024)}K${mounted.includes(path) ? '  ●' : ''}`);
+    if (present) for (const d of [0, 1]) btn(r, String(d), () => {
+      if (!withStr(path, (p) => vcc.vcc_sdc_mount(d, p))) toast(`Could not mount ${e.name}`); else toast(`${e.name} in drive ${d}`);
+      renderSd();
+    });
+    btn(r, 'Save', () => saveToDevice(e.name, Files.get('sd:' + path).data));
+    btn(r, 'Delete', () => {
+      if (mounted.includes(path)) { toast('Unmount it first'); return; }
+      if (!confirm(`Delete ${path} from the SD card?`)) return;
+      SD.remove(path);
+      renderSd();
+    });
+  }
+}
+
 function renderHdds() {
   const box = $('hdds');
   box.innerHTML = '';
@@ -480,6 +574,7 @@ function renderHdds() {
 async function bootMachine() {
   vcc.vcc_init();
   await loadHardDrives();
+  await loadSdCard();
   await applyRoms();
   applyConfig();
   await mountDrives();
@@ -1046,10 +1141,11 @@ function renderSlots() {
     const info = document.createElement('span');
     info.className = 'name';
     if (slot && NEEDS_FILE[slot.type]) info.textContent = slot.name || 'no ROM';
+    if (slot && +slot.type === 13) info.textContent = slot.name || 'Disk BASIC 1.1';
     sel.onchange = async () => {
       const type = +sel.value;
-      if (type === 1 && settings.slots.some((x, n) => n !== i && x && +x.type === 1)) {
-        toast('Only one FD-502 can be plugged in'); sel.value = slot ? slot.type : 0; return;
+      if ((type === 1 || type === 13) && settings.slots.some((x, n) => n !== i && x && (+x.type === 1 || +x.type === 13))) {
+        toast('One disk controller only: the FD-502 or the CoCoSDC'); sel.value = slot ? slot.type : 0; return;
       }
       if (slot && slot.key) await Store.del(slot.key);
       if (slot && slot.sdKey) await Store.del(slot.sdKey);
@@ -1070,6 +1166,15 @@ function renderSlots() {
             settings.slots[i].name = f.name + ' + ' + sd.name;
           }
         }
+      } else if (type === 13) {
+        toast('Choose the SDC-DOS ROM, or Cancel to use Disk BASIC 1.1', 4000);
+        const f = await pickFile('');
+        settings.slots[i] = { type };
+        if (f) {
+          const key = `cart:${i}:${f.name}`;
+          await Store.put(key, stripLoadHeader(f.bytes).slice().buffer);
+          Object.assign(settings.slots[i], { key, name: f.name });
+        }
       } else {
         settings.slots[i] = type ? { type } : null;
       }
@@ -1086,6 +1191,7 @@ function renderSlots() {
 function renderDrives() {
   const box = $('drives');
   box.innerHTML = '';
+  if (sdcSlot() >= 0) { box.innerHTML = '<p class="note">The CoCoSDC is the disk controller: its drives 0 and 1 are images on the SD card (☰ → Cartridge → SD card).</p>'; return; }
   for (let d = 0; d < 4; d++) {
     const info = settings.drives[d];
     const row = document.createElement('div');
@@ -1231,7 +1337,18 @@ function wireUi() {
     $('controls').classList.toggle('hidden', !settings.showControls);
     applyLayout();
   };
-  $('btnMenu').onclick = () => { renderPrinter(); renderDrives(); renderTape(); renderSlots(); renderHdds(); updateRomLabels(); $('menu').classList.add('open'); };
+  $('btnMenu').onclick = () => { renderPrinter(); renderDrives(); renderTape(); renderSlots(); renderHdds(); renderSd(); updateRomLabels(); $('menu').classList.add('open'); };
+  $('btnSdAdd').onclick = async () => {
+    const files = await pickFiles();
+    for (const f of files) SD.add(sdName(sdCwd, f.name), f.bytes.slice());
+    if (files.length) { toast(`${files.length} file${files.length > 1 ? 's' : ''} added to the SD card`); renderSd(); }
+  };
+  $('btnSdDir').onclick = () => {
+    const name = prompt('Folder name (up to 8 letters)');
+    if (!name) return;
+    const path = sdName(sdCwd, name.replace(/\./g, ''));
+    if (SD.mkdir(path) !== 0) toast('Could not make that folder'); else renderSd();
+  };
   $('btnClose').onclick = () => $('menu').classList.remove('open');
   $('menu').addEventListener('click', (e) => { if (e.target.id === 'menu') $('menu').classList.remove('open'); });
 
@@ -1361,7 +1478,14 @@ async function loadProgram(run) {
   startAudio();
   if (ext === 'cas' || ext === 'wav') { await loadTapeProgram(f, run); return; }
   if (ext === 'dsk') {
-    await insertDisk(0, f);
+    if (sdcSlot() >= 0) {
+      // With a CoCoSDC: onto the SD card (the same image again is reused), mounted in drive 0.
+      let path = sdName('', f.name);
+      const same = SD.files().find((p) => !p.includes('/') && Files.get('sd:' + p).data.length === f.bytes.length && Files.get('sd:' + p).data.every((v, i) => v === f.bytes[i]));
+      if (same) path = same; else SD.add(path, f.bytes.slice());
+      if (!withStr(path, (p) => vcc.vcc_sdc_mount(0, p))) { toast(`Could not mount ${path}`); return; }
+      toast(`${path} on the SD card, in drive 0`);
+    } else await insertDisk(0, f);
     if (!run) return;
     const files = dskDirectory(f.bytes);
     const ml = files.filter((x) => x.type === 2), bas = files.filter((x) => x.type === 0);

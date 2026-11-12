@@ -6,6 +6,28 @@ has been checked on a real CoCo 3, and Android results name the device.
 
 ## [Unreleased]
 ### Added
+- **CoCoSDC** (cartridge type 13): the SD card controller, with an SD card of disk images and
+  folders kept on the device and managed in ☰ → Cartridge → SD card. Command mode is VCC's SDC
+  simulator (EJ Jaquay, 2025) ported onto VCCA's file system: sector reads and writes in word and
+  byte mode, image size, mount (`.DSK` added, wildcards, folders), new image, directory listing,
+  change, make, rename and delete, and `STARTUP.CFG` at power-on. The floppy personality is the
+  FD-502's WD1793 model with the card's two images as drives 0 and 1, so Disk BASIC 1.1 reads and
+  writes through it. The card's ROM is SDC-DOS when given, else Disk BASIC 1.1. Run… with a `.dsk`
+  puts it on the card and mounts it. `test/sdc.mjs` (26 checks) and `test/sdcui.mjs` (14) run on
+  the repository's own test ROM and need no Tandy ROM. Not ported: 512-byte streaming, SDF
+  images, flash programming.
+- The CoCoSDC holds BUSY for a few scanlines after each command, and loses block bytes sent
+  before READY, so a program that does not wait for the card fails here as on one. VCC's simulator
+  answers at once. The timings are a guess (docs/decisions.md 9).
+### Changed
+- The page-driving tests assert their results instead of printing them for a person to read:
+  `ui12`, `tape`, `tape3`, `tape4` and `tape5` exit with their number of failures. Written without
+  the Tandy ROMs, so **not yet run** (docs/testing.md).
+- `test/run.sh` runs the tests that need no Tandy ROM even without them, and exits 1 when any test
+  could not run; a test fails on a line starting `FAIL` (a check that merely mentions the card's
+  FAILED bit no longer counts).
+- The CoCoSDC and the FD-502 exclude each other: both are the WD1793 model.
+- Changes in `src/port` break save states made by earlier builds.
 - **emesDOS09 smart cartridge** (cartridge type 12): the 16 KiB ROM in two 8 KiB pages
   (page = `$FF40` bit 7) and the controller mailbox at `$FF40`-`$FF4F`, with an SD card image
   as the file `emessd` (read-only for now). The controller is the emesDOS09 firmware core,
@@ -17,6 +39,19 @@ has been checked on a real CoCo 3, and Android results name the device.
 - Changes in `src/port` break save states made by earlier builds, as every core change does.
 
 ### Learned
+- **VCC's WD1793 model ends a sector read on a 257th read of the data register or on a time-out**,
+  and the time-out sets LOST DATA: a program that reads exactly 256 bytes, as a real WD1773 wants,
+  finishes with status `$04` here. Seen through the CoCoSDC's floppy personality in `test/sdc.mjs`
+  [SIM]; it is the FD-502 code VCCA has always used, so plain floppies do it too. Not fixed in this
+  change; a real WD1773 sets nothing after the 256th byte.
+- **The designer's CoCoSDC probe** (`$64` to `$FF42`, read `$FF43`, clear, compare) works against
+  VCC's flash-register model: `$FF43` must read bank | (`$FF42` & `$F8`) [SIM, from VCC's source].
+- **The first CoCoSDC test passed every check on its first run, and two of its checks could not
+  fail**: a mount that should have appended `.DSK` was rescued by the wildcard fallback, and the
+  "bytes before READY" rule was never exercised. Found by breaking the code on purpose; the test
+  gained a decoy `TWO.BAK` and a write that does not wait.
+- **A collapsed `<details>` section has empty `innerText`**: the SD card manager test read nothing
+  until it opened the section, as a user would [Chromium 1243].
 - **A CoCo 3 does not leave a cartridge's `$C000`-`$DFFF` alone at boot.** With `coco3.rom` and the
   emesDOS09 ROM in the slot, RAM was writable at `$D000` after boot and the cartridge had been read
   8,194 times (8,192 plus the two `DK` bytes) before the first frame ended, so Super BASIC's reset

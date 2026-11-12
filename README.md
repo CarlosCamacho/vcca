@@ -46,6 +46,7 @@ Android port by **CoCoScene**.
 - Stereo Composer, Symphony 12 and CoCo PSG, which need no ROM
 - Glenside-compatible IDE interface at `$FF70` or `$FF50`
 - emesDOS09 smart cartridge: its ROM and controller, with an SD card image (the ROM does not boot on the CoCo 3 yet; see the changelog)
+- **CoCoSDC**: an SD card of disk images with folders, managed in the app; command mode (LSN reads and writes, mount, new image, directories) and the floppy emulation Disk BASIC uses; SDC-DOS or Disk BASIC 1.1 as its ROM
 
 **Other**
 - BitBanger printer capture (`LLIST`, `PRINT#-2`) to text
@@ -54,7 +55,7 @@ Android port by **CoCoScene**.
 - Built-in Help covers every feature, including step-by-step hard drive setup, and **Report a bug** opens the bug form with your version and device filled in
 
 More in [docs/design.md](docs/design.md). Not ported yet: the Becker port and
-DriveWire, VCC's VHD hard disk pak, the **CoCoSDC**, the RS-232 pak and VCC's
+DriveWire, VCC's VHD hard disk pak, the RS-232 pak and VCC's
 debugger windows.
 
 ## Requirements
@@ -67,7 +68,9 @@ debugger windows.
   copyrighted and not included; if you use VCC on Windows, both are in its
   folder. HDB-DOS for hard drives is built separately (see Building).
 - Optional: a physical keyboard or game controller.
-- VCCA does not emulate a **CoCoSDC** or DriveWire; floppies are `.dsk` images
+- For the **CoCoSDC**: the SDC-DOS ROM, from the card's own distribution (Disk BASIC 1.1
+  also works, through the card's floppy emulation). VCCA does not emulate DriveWire;
+  without a CoCoSDC, floppies are `.dsk` images
   in the four FD-502 drives, hard drives go through HDB-DOS.
 
 ## Running
@@ -200,7 +203,8 @@ or (at your option) any later version, as VCC is.
   releases maintained by Bill Pierce and Ed Jaquay. Adapted to Visual Studio
   by Gary Coulbourne and Wes Gale; Hitachi 6309 port by Walter Zambotti. Bug
   fixes and enhancements by Bill Pierce, James Ross, Peter Westberg, James
-  Rye, EJ Jaquay, Mike Rojas, Trey Tomes and Craig Allsop. GPL v3.
+  Rye, EJ Jaquay, Mike Rojas, Trey Tomes and Craig Allsop. CoCoSDC simulator by
+  EJ Jaquay. GPL v3.
 - **MAME** cartridge drivers, ported (BSD-3-Clause, notices kept in the
   sources): Stereo Composer, Symphony 12 and Speech/Sound Pak by tim lindner;
   CoCo PSG by Roberto Fernandez and Nigel Barnes (thanks to Ed Snider);

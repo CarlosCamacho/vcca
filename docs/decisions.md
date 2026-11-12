@@ -72,3 +72,31 @@ for an Android emulator rather than a CoCo game: `dist/` holds `VCCA.apk`
 (not a `.dsk`), and there is no `lib/coco-common` (no 6809 code is shared
 with other projects). `PRIVACY.md` stays at the root because Google Play
 links to it there.
+
+## 9. The CoCoSDC: VCC's command mode, the WD1793 model for floppy mode (2026-11-12)
+
+**Context:** VCC 2.1.10 has a CoCoSDC simulator (`sdc/sdc.cpp`) with command
+mode and its own floppy emulation. Its floppy emulation writes nothing, never
+sets BUSY, and holds DRQ until a 257th read; the hardware skill records each of
+these breaking a real project. How the real card's firmware emulates the
+WD1773 is not documented anywhere readable here.
+**Choice:** port VCC's command mode, but send the floppy personality to the
+FD-502's WD1793 model with the card's images as drives 0 and 1, so Disk BASIC
+1.1 can read and write through it as through the chip it imitates. Hold BUSY
+briefly after each command (VCC answers at once) so a program that does not
+wait for the card fails in VCCA too. **Consequence:** VCCA's floppy-mode
+behaviour is the WD1793 model's, not VCC's and not necessarily the card's:
+a program tested only through the floppy emulation still needs a real card.
+Command mode, which the house standard says every SDC program should use, is
+where VCCA is meant to be trusted, and even there the BUSY timings are guesses.
+The WD1793 model is global, so a CoCoSDC and an FD-502 cannot both be plugged
+in, which a Multi-Pak would allow.
+
+## 10. Tests assert, and prove they can fail (2026-11-12)
+
+The page-driving tests (ui12, tape, tape3, tape4, tape5) printed what they saw
+and failed only on a crash or a page error. They now check each result and exit
+with the number of failures (`test/check.mjs`). The CoCoSDC tests run on the
+repository's own test ROM (`test/sdcrom.asm` as the system ROM), so they need no
+Tandy ROM; each of their checks was shown to fail on a deliberately broken
+build (13 breaks of the core for `sdc`, 6 of the front end for `sdcui`).

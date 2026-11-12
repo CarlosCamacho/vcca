@@ -1,5 +1,6 @@
 import { chromium } from 'playwright';
 import { ROMS as U, TMP as S } from './paths.mjs';
+import { check, done } from './check.mjs';
 const b = await chromium.launch();
 const page = await (await b.newContext()).newPage(); const logs = []; page.on('pageerror', e => logs.push(e.message)); page.on('dialog', d => d.accept());
 await page.goto('http://127.0.0.1:8765/index.html'); await page.waitForTimeout(800);
@@ -24,6 +25,8 @@ for (const kind of [1, 2]) {
   await type('CLOAD\r'); await page.waitForTimeout(1000);
   await waitFor(/CLOAD[\s\S]*OK/);
   await type('RUN\r');
-  console.log(kind === 1 ? 'WAV' : 'CAS', 'FWD to', fwd.join(' of '), '→', last(await waitFor(/SECOND|FIRST/)));
+  const out = await waitFor(/SECOND|FIRST/);
+  check(fwd[0] > 0 && fwd[0] < fwd[1], `${kind === 1 ? 'WAV' : 'CAS'}: FWD stops partway, at the second program (${fwd.join(' of ')})`);
+  check(/SECOND/.test(out) && !/FIRST/.test(out.split('RUN').pop()), `${kind === 1 ? 'WAV' : 'CAS'}: CLOAD after FWD loads the second program (${last(out)})`);
 }
-console.log(logs.join('\n') || 'no errors'); await b.close();
+await done(logs, b);
