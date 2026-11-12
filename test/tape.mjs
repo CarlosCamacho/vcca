@@ -48,8 +48,8 @@ await page.evaluate(() => { tapeRewind(); tapeControl(1); });
 await type('NEW\r'); await page.waitForTimeout(500);
 t0 = Date.now();
 await type('CLOAD\r'); await page.waitForTimeout(500);
-r = await waitFor(/CLOAD[\s\S]*OK\s*$/);
-check(!r.startsWith('TIMEOUT'), `CLOAD finished (${Date.now() - t0} ms)`);
+r = await waitFor(/F HELLO\s*\n\s*OK/i);   // the screen copy ends in the cursor, not OK
+check(!r.startsWith('TIMEOUT'), `CLOAD finished (${last(r)}, ${Date.now() - t0} ms)`);
 await type('RUN\r');
 r = await waitFor(/TAPE OK/);
 check(!r.startsWith('TIMEOUT'), 'RUN of the CLOADed program prints TAPE OK');
@@ -60,12 +60,19 @@ const p400 = await page.evaluate(() => vcc.vcc_peek(0x400));
 check(p400 === 0x2a, `CLOADM:EXEC ran the ML program: $400 = $${p400.toString(16)} (expected $2a)`);
 
 // 5. A WAV made from the CAS (22050 Hz, 16-bit stereo), through Run
+// As a real recording: CSAVE stops the motor between blocks, so each leader
+// (a run of $55) after the first starts after half a second of silence. Without
+// the pause, BASIC's motor-on delay swallows the data block's leader and the
+// program does not load.
 function casToWav(bytes, rate) {
   const s = []; for (let i = 0; i < rate / 2; i++) s.push(0);
-  for (const byte of bytes) for (let bit = 0; bit < 8; bit++) {
+  for (let p = 0; p < bytes.length; p++) {
+    const byte = bytes[p];
+    if (p > 0 && byte === 0x55 && bytes[p - 1] !== 0x55 && bytes.slice(p, p + 16).every((v) => v === 0x55)) for (let i = 0; i < rate / 2; i++) s.push(0);
+    for (let bit = 0; bit < 8; bit++) {
     const f = (byte >> bit) & 1 ? 2400 : 1200, n = Math.round(rate / f);
     for (let i = 0; i < n; i++) s.push(Math.sin(2 * Math.PI * i / n) * 0.7);
-  }
+  } }
   for (let i = 0; i < rate / 2; i++) s.push(0);
   const out = Buffer.alloc(44 + s.length * 4);
   out.write('RIFF', 0); out.writeUInt32LE(36 + s.length * 4, 4); out.write('WAVEfmt ', 8);
@@ -80,7 +87,7 @@ await type('NEW\r'); await page.waitForTimeout(500);
 t0 = Date.now();
 await pick('#cmdRun', wavPath);
 r = await waitFor(/TAPE OK/, 120000);
-check(!r.startsWith('TIMEOUT'), `Run… of a 22 kHz stereo WAV loads and runs it (${Date.now() - t0} ms)`);
+check(!r.startsWith('TIMEOUT'), `Run… of a 22 kHz stereo WAV loads and runs it (${last(r)}, ${Date.now() - t0} ms)`);
 const ta = await page.evaluate(() => ({ info: tapeInfo(), tape: settings.tape }));
 check(ta.tape && ta.tape.name === 'hello.wav' && ta.info.size > 0, `the WAV is the tape in the deck (${ta.tape && ta.tape.name}, ${ta.info.size} bytes)`);
 

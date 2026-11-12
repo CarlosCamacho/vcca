@@ -31,7 +31,7 @@ if [ "$1" = --serve ]; then echo "Serving build/web on http://127.0.0.1:8765/ (C
 # ROM): $EMES_DIST, or ../emesdos09/dist beside this repository.
 NOROM="sdc sdcui joyart"
 EMES=emes; [ -d "${EMES_DIST:-../emesdos09/dist}" ] || { EMES=""; echo "SKIP  emes (no emesDOS09 dist/; set EMES_DIST)"; }
-TESTS=${*:-"$NOROM timer vbord $EMES ui12 tape tape3 tape4 tape5"}
+TESTS=${*:-"$NOROM timer vbord sdcbasic $EMES ui12 tape tape3 tape4 tape5"}
 failed=""; missing=""
 for t in $TESTS; do
 	case " $NOROM " in

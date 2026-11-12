@@ -22,6 +22,7 @@ the code it covers and watching it fail.
 | `sdc` | the CoCoSDC through its registers, with `sdcrom.raw` as the machine's ROM: detection, flash banks, command-mode reads (word and byte mode), a write, errors, write protect, mounting, a new image, the listing, BUSY, the floppy personality | 26 checks |
 | `sdcui` | the CoCoSDC in the app: the SD card's files reach the CoCo, its writes and new images reach IndexedDB, the SD card manager, Run… with a `.dsk`, a reload | 14 checks |
 | `joyart` | the on-screen stick drawn as each controller: drag, the drawn buttons, centering, a touch on the bare case, the FIRE button, the Simple stick, landscape | 26 checks, no ROM |
+| `sdcbasic` | Disk BASIC through the CoCoSDC's floppy personality: DSKINI0, SAVE, DIR, LOAD and RUN on an SD card image | 8 checks |
 | `timer` | GIME timer in scanline mode, with `timerrom.raw` | every border band is the same height (prints `PASS`) |
 | `vbord` | GIME VBORD timing, with `vbordrom.raw` | the border colour changes exactly where the bottom border begins (prints `PASS`) |
 | `ui12` | printer capture, joystick ports, function keys | the printout is exact; JOYSTK values in range for each port; F4 sets overclock 4; F6 switches the monitor |
@@ -30,9 +31,9 @@ the code it covers and watching it fail.
 | `tape4` | the tape deck in the menu and the status line during CLOAD | the deck shows the tape and PLAY; the status line shows `Play n%` |
 | `tape5` | FWD to the second program on `.cas` and `.wav` tapes | FWD stops partway; CLOAD then loads SECOND |
 
-⚠ The assertions in `ui12`, `tape`, `tape3`, `tape4` and `tape5` were written on
-2026-11-12 in a container without the Tandy ROMs and **have not been run yet**;
-their expected values come from those tests' last recorded output.
+Every check above has been seen to fail on a deliberately broken build (19 breaks
+for the CoCoSDC tests, 7 for `joyart`, 6 for the five tests that used to print, 1 for
+`sdcbasic`), so none passes whatever the code does.
 
 ## Run by hand
 

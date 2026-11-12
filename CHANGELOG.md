@@ -28,8 +28,14 @@ has been checked on a real CoCo 3, and Android results name the device.
   answers at once. The timings are a guess (docs/decisions.md 9).
 ### Changed
 - The page-driving tests assert their results instead of printing them for a person to read:
-  `ui12`, `tape`, `tape3`, `tape4` and `tape5` exit with their number of failures. Written without
-  the Tandy ROMs, so **not yet run** (docs/testing.md).
+  `ui12`, `tape`, `tape3`, `tape4` and `tape5` exit with their number of failures, and each fails on
+  a deliberately broken front end.
+- `test/sdcbasic.mjs`: Disk BASIC 1.1 through the CoCoSDC's floppy personality (DSKINI0, SAVE,
+  DIR, LOAD, RUN on an SD card image).
+- The Node harnesses (timer, vbord, emes, snd2) answer any host import they do not provide with
+  -1, so a new import cannot break them again.
+- `test/tape.mjs` makes its WAV as a real recording sounds, with half a second of silence before
+  each block's leader.
 - `test/run.sh` runs the tests that need no Tandy ROM even without them, and exits 1 when any test
   could not run; a test fails on a line starting `FAIL` (a check that merely mentions the card's
   FAILED bit no longer counts).
@@ -46,6 +52,16 @@ has been checked on a real CoCo 3, and Android results name the device.
 - Changes in `src/port` break save states made by earlier builds, as every core change does.
 
 ### Learned
+- **Asserting the page tests found two checks that had never passed.** `tape`'s CLOAD step waited
+  for the screen to end in `OK`, but the screen copy ends in the cursor; and its WAV, synthesised
+  from the CAS bytes with no pause between blocks, loaded the header and lost the program, because
+  BASIC's motor-on delay swallowed the data block's leader. Both printed `TIMEOUT` into a log nobody
+  read; `main` fails both the same way [Chromium 1243, the owner's ROMs].
+- **The CoCoSDC commit broke `timer` and `vbord`**, which instantiate `vcc.wasm` with a fixed list of
+  host imports, and it went unseen because those tests could not run without the Tandy ROMs. Found
+  the moment the ROMs arrived. A test that is skipped is a test that is not there.
+- **A CoCo 3 shows "DISK EXTENDED COLOR BASIC 2.1" over disk11.rom** (its ROM patches the banner),
+  so a check for "1.1" fails [VCCA, the owner's ROMs].
 - **The Wico's tip button covered most of its ball.** XRoar for Android takes a touch within 1.6
   times the tip's radius as the tip, which leaves only a thin ring of the ball to grab the stick
   by. VCCA takes the tip's own size (1.1 times). Found by `test/joyart.mjs` [Chromium 1243]; the
