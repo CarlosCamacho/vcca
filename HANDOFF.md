@@ -1,7 +1,15 @@
 # Current Baton Pass
-- **Current State:** `main` (0eaeda3, VCCA 1.3.0 + the emesDOS09 cartridge from PR #3) builds `build/vcc.wasm` cleanly with `./build.sh`. The CoCoSDC cartridge, the drawn joystick looks and the asserted test suite are pushed but unmerged on `dev/joystick-art` (which includes `dev/cocosdc`), where all 11 tests pass with the owner's ROMs.
+- **Current State:** `main` (VCCA 1.3.0 + the emesDOS09 cartridge, PR #3) builds `build/vcc.wasm` cleanly. Finished but unmerged on `dev/joystick-art` (contains `dev/cocosdc`): the CoCoSDC cartridge, the drawn joystick looks, asserted page tests; all 11 tests pass there (99 checks) with the owner's ROMs. All open work is GitHub Issues #4-#21.
 - **Immediate Next Step:**
-  - Open and merge the pull request for `dev/joystick-art` into `main`, then release 1.4.0 (bump `VERSION`, `app.js`, `versionCode`).
-  - Fix the WD1793 model ending a sector read only on a 257th read or a time-out (sets LOST DATA), with a test ROM that fails first.
-- **Dead Ends / Do Not Repeat:** None recorded yet.
+  - **#4** — merge `dev/joystick-art` into `main` and release VCCA 1.4.0 (needs the owner's release keystore).
+  - Then **#5** — the WD1793 model's 257th-read / LOST DATA bug, with a failing-first test ROM.
+- **Dead Ends / Do Not Repeat:**
+  - `gh issue list` / `gh pr` fail here (GraphQL blocked): use `gh api repos/CarlosCamacho/vcca/...` (REST).
+  - `dl.google.com` is blocked: no Gradle, no SDK manager. Android builds use the Ubuntu SDK packages (android-23 jar, aapt2, dx from `dalvik-exchange`) and bundletool 1.18.3 from GitHub; newer Android APIs are called by reflection.
+  - Playwright must match the preinstalled Chromium (1243 → `playwright@1.63.0`); `npm i --no-save` so no package.json appears.
+  - A WAV synthesised from CAS bytes needs ~0.5 s of silence before each block's leader, or CLOAD finds the file and loses the program.
+  - The screen-text copy ends in the cursor character: never match `OK\s*$`.
+  - A CoCo 3 shows "DISK EXTENDED COLOR BASIC 2.1" over disk11.rom: don't match "1.1".
+  - Node harnesses that instantiate `vcc.wasm` must default missing `vcca` imports (Proxy returning -1), or a new host import breaks them.
+  - Tandy ROMs are not in the repo or fetchable: ask the owner to upload `coco3.rom` and `disk11.rom`; don't call ROM tests passed when they were skipped.
 - **Verification:** Run `./build.sh && test/run.sh` and confirm zero errors before committing.
