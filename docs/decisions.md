@@ -67,7 +67,7 @@ would change the links.
 
 Reorganized to the CoCo project standard (`coco-tooling →
 coco-project-organization`): `src/ tools/ test/ assets/ docs/ dist/`, one
-`./build.sh`, `CHANGELOG.md` with `### Learned`, `CLAUDE.md`. Two departures
+`./build.sh`, `CHANGELOG.md` with `### Learned`, `AGENTS.md` (was `CLAUDE.md`). Two departures
 for an Android emulator rather than a CoCo game: `dist/` holds `VCCA.apk`
 (not a `.dsk`), and there is no `lib/coco-common` (no 6809 code is shared
 with other projects). `PRIVACY.md` stays at the root because Google Play
